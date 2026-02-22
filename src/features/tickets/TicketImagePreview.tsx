@@ -7,22 +7,24 @@ import {
   View,
   type GestureResponderEvent,
   type ImageStyle,
+  type ViewStyle,
   type StyleProp,
 } from "react-native";
 
 export function TicketImagePreview(props: {
   uri: string;
-  style: StyleProp<ImageStyle>;
+  style: StyleProp<ViewStyle | ImageStyle>;
   onPress: (event: GestureResponderEvent) => void;
   accessibilityLabel?: string;
 }): React.JSX.Element {
   return (
     <Pressable
+      style={[props.style as StyleProp<ViewStyle>, styles.container]}
       onPress={props.onPress}
       accessibilityRole="button"
       accessibilityLabel={props.accessibilityLabel ?? "Open image full screen"}
     >
-      <Image source={{ uri: props.uri }} style={props.style} />
+      <Image source={{ uri: props.uri }} style={styles.image} />
       <View style={styles.expandBadge} pointerEvents="none">
         <Ionicons name="expand-outline" size={16} color="#ffffff" />
       </View>
@@ -31,6 +33,13 @@ export function TicketImagePreview(props: {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
   expandBadge: {
     position: "absolute",
     top: 10,

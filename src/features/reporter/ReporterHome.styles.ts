@@ -177,6 +177,11 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.textMuted,
   },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   ticketDescription: {
     fontSize: 14,
     color: theme.colors.textSecondary,
@@ -282,10 +287,24 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 4,
   },
+  modalResolutionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: theme.colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: 12,
+  },
   modalDescription: {
     fontSize: 15,
     lineHeight: 22,
     color: theme.colors.textSecondary,
+  },
+  modalSkeletonBlock: {
+    marginTop: 8,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: "#efe8cd",
   },
   modalImage: {
     marginTop: 8,
@@ -302,6 +321,21 @@ export const styles = StyleSheet.create({
     fontWeight: "900",
     color: theme.colors.textPrimary,
     letterSpacing: -0.5,
+  },
+  modalSkeletonHistory: {
+    marginTop: 8,
+    gap: 10,
+  },
+  modalSkeletonLine: {
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#efe8cd",
+  },
+  modalSkeletonLineShort: {
+    width: "62%",
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#efe8cd",
   },
   timelineContainer: {
     marginTop: 8,
@@ -353,6 +387,12 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
+  },
+  historyNoteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 2,
   },
   historyNoteText: {
     color: theme.colors.textPrimary,

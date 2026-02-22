@@ -14,6 +14,7 @@ export function ImageLightbox(props: {
       visible={props.imageUri !== null}
       transparent
       animationType="fade"
+      presentationStyle="overFullScreen"
       statusBarTranslucent
       onRequestClose={props.onClose}
     >
