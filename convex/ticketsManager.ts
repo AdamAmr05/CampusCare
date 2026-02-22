@@ -82,7 +82,11 @@ export const assignResolver = mutation({
     assertStatusTransition(ticket.status, "assigned");
 
     const now = Date.now();
-    const note = normalizeOptionalText(args.note, TICKET_NOTE_MAX_LENGTH);
+    const note = normalizeOptionalText(
+      args.note,
+      "Assignment note",
+      TICKET_NOTE_MAX_LENGTH,
+    );
 
     await ctx.db.patch(ticket._id, {
       managerUserId: manager._id,
@@ -142,7 +146,11 @@ export const close = mutation({
     assertStatusTransition(ticket.status, "closed");
 
     const now = Date.now();
-    const note = normalizeOptionalText(args.note, TICKET_NOTE_MAX_LENGTH);
+    const note = normalizeOptionalText(
+      args.note,
+      "Closure note",
+      TICKET_NOTE_MAX_LENGTH,
+    );
 
     await ctx.db.patch(ticket._id, {
       managerUserId: manager._id,

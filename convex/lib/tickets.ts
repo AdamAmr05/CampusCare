@@ -36,6 +36,7 @@ export function normalizeRequiredText(
 
 export function normalizeOptionalText(
   value: string | undefined,
+  fieldName: string,
   maxLength: number,
 ): string | null {
   const normalized = value?.trim();
@@ -44,7 +45,7 @@ export function normalizeOptionalText(
   }
 
   if (normalized.length > maxLength) {
-    throw new ConvexError(`Note must be ${maxLength} characters or fewer.`);
+    throw new ConvexError(`${fieldName} must be ${maxLength} characters or fewer.`);
   }
 
   return normalized;

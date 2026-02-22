@@ -54,7 +54,11 @@ export const setInProgress = mutation({
     assertStatusTransition(ticket.status, "in_progress");
 
     const now = Date.now();
-    const note = normalizeOptionalText(args.note, TICKET_NOTE_MAX_LENGTH);
+    const note = normalizeOptionalText(
+      args.note,
+      "Progress note",
+      TICKET_NOTE_MAX_LENGTH,
+    );
 
     await ctx.db.patch(ticket._id, {
       status: "in_progress",
@@ -97,8 +101,14 @@ export const markResolved = mutation({
       TICKET_NOTE_MAX_LENGTH,
     );
 
-    if (ticket.status === "resolved" && ticket.resolutionNote === resolutionNote) {
-      return null;
+    if (ticket.status === "resolved") {
+      if (ticket.resolutionNote === resolutionNote) {
+        return null;
+      }
+
+      throw new ConvexError(
+        "Ticket is already resolved and awaiting manager closure. Resolution note cannot be changed.",
+      );
     }
 
     assertStatusTransition(ticket.status, "resolved");

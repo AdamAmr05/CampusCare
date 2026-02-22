@@ -211,6 +211,33 @@ describe("ticket lifecycle and access control", () => {
     ).rejects.toThrow(/Resolution note is required/);
   });
 
+  it("rejects changing resolution note after resolved", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "7");
+    const { manager, resolver, resolverAccessAfterApproval } =
+      await seedResolverAndApprove(t);
+
+    const ticketId = await createTicketAsReporter(t, reporter);
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: resolverAccessAfterApproval.userId,
+    });
+
+    await resolver.mutation(api.ticketsResolver.setInProgress, { ticketId });
+    await resolver.mutation(api.ticketsResolver.markResolved, {
+      ticketId,
+      resolutionNote: "Initial fix applied.",
+    });
+
+    await expect(
+      resolver.mutation(api.ticketsResolver.markResolved, {
+        ticketId,
+        resolutionNote: "Different note attempt.",
+      }),
+    ).rejects.toThrow(/already resolved and awaiting manager closure/);
+  });
+
   it("allows only managers to close resolved tickets", async () => {
     const t = createHarness();
     const { reporter } = await seedReporter(t, "4");

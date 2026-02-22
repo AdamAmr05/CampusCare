@@ -1,5 +1,5 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import {
   appendTicketStatusHistory,
@@ -98,7 +98,7 @@ export const getMineById = query({
     }
 
     if (ticket.reporterUserId !== reporter._id) {
-      throw new ConvexError("Not authorized to view this ticket.");
+      return null;
     }
 
     const history = await ctx.db
