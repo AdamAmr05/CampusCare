@@ -10,6 +10,7 @@
     "web": "npx expo start --web"
   },
   "dependencies": {
+    "convex": "^1.32.0",
     "expo": "^54.0.0",
     "expo-status-bar": "^3.0.8",
     "react": "19.1.0",
