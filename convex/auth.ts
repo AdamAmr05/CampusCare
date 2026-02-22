@@ -151,8 +151,22 @@ export const upsertCurrentUser = mutation({
       nextRole = "manager";
       nextAccountStatus = "active";
     } else if (args.intent === "resolver" && existingUser.role !== "resolver") {
+      // Rejected users must explicitly trigger reapply via resolverRequests.reapply.
+      if (existingUser.accountStatus === "resolver_rejected") {
+        nextRole = "reporter";
+        nextAccountStatus = "resolver_rejected";
+      } else {
+        nextRole = "reporter";
+        nextAccountStatus = "pending_resolver_approval";
+      }
+    } else if (
+      args.intent === "reporter" &&
+      existingUser.role !== "resolver" &&
+      existingUser.accountStatus === "resolver_rejected"
+    ) {
+      // Reporter path should restore reporter access after a rejected resolver request.
       nextRole = "reporter";
-      nextAccountStatus = "pending_resolver_approval";
+      nextAccountStatus = "active";
     }
 
     const shouldPatch =
@@ -171,7 +185,12 @@ export const upsertCurrentUser = mutation({
       });
     }
 
-    if (!managerAccount && args.intent === "resolver" && nextRole !== "resolver") {
+    if (
+      !managerAccount &&
+      args.intent === "resolver" &&
+      nextRole !== "resolver" &&
+      nextAccountStatus === "pending_resolver_approval"
+    ) {
       await ensurePendingResolverRequest(ctx, {
         requesterUserId: existingUser._id,
         requesterEmail: email,
