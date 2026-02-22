@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, SafeAreaView, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { useClerk } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { OnboardingIntent } from "../../domain/types";
 import { ManagerHome } from "../manager/ManagerHome";
-import { ErrorScreen, InfoScreen, LoadingScreen, RoleHome } from "../../ui/Screens";
-import { styles } from "../../ui/styles";
+import { ReporterHome } from "../reporter/ReporterHome";
+import { ResolverHome } from "../resolver/ResolverHome";
+import { AppScreen } from "../../ui/AppScreen";
+import { ErrorScreen, InfoScreen, LoadingScreen } from "../../ui/Screens";
+import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import type { AccessSummary } from "./types";
+import { styles } from "./AuthenticatedGate.styles";
 
 export function AuthenticatedGate(props: {
   intent: OnboardingIntent;
@@ -77,11 +81,11 @@ export function AuthenticatedGate(props: {
                 setSyncAttempt((previous) => previous + 1);
                 setLastSyncedIntent(null);
               }}
-              style={[styles.button, styles.primaryButton]}
+              style={styles.primaryButton}
             >
               <Text style={styles.primaryButtonText}>Retry sync</Text>
             </Pressable>
-            <Pressable onPress={() => void signOut()} style={[styles.button, styles.secondaryButton]}>
+            <Pressable onPress={() => void signOut()} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Sign out</Text>
             </Pressable>
           </>
@@ -109,7 +113,7 @@ export function AuthenticatedGate(props: {
         title="Resolver request pending"
         message="Your resolver request is pending manager approval. Protected app features remain locked until a decision is made."
         footer={
-          <Pressable onPress={() => void signOut()} style={[styles.button, styles.secondaryButton]}>
+          <Pressable onPress={() => void signOut()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Sign out</Text>
           </Pressable>
         }
@@ -139,7 +143,7 @@ export function AuthenticatedGate(props: {
     };
 
     return (
-      <SafeAreaView style={styles.container}>
+      <AppScreen>
         <View style={styles.card}>
           <Text style={styles.title}>Resolver request rejected</Text>
           <Text style={styles.subtitle}>
@@ -148,7 +152,7 @@ export function AuthenticatedGate(props: {
 
           <TextInput
             placeholder="Optional reason for reapply"
-            placeholderTextColor="#7c8fa1"
+            placeholderTextColor={theme.colors.textMuted}
             style={styles.input}
             value={reapplyReason}
             onChangeText={setReapplyReason}
@@ -157,7 +161,7 @@ export function AuthenticatedGate(props: {
           <Pressable
             onPress={onReapply}
             disabled={reapplying}
-            style={[styles.button, styles.primaryButton]}
+            style={[styles.primaryButton, reapplying ? styles.disabled : null]}
           >
             <Text style={styles.primaryButtonText}>
               {reapplying ? "Submitting..." : "Reapply for resolver"}
@@ -166,35 +170,36 @@ export function AuthenticatedGate(props: {
 
           {reapplyError.length > 0 ? <Text style={styles.errorText}>{reapplyError}</Text> : null}
 
-          <Pressable onPress={() => void signOut()} style={[styles.button, styles.secondaryButton]}>
+          <Pressable onPress={() => void signOut()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Sign out</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </AppScreen>
     );
   }
 
   if (access.role === "manager") {
-    return <ManagerHome onSignOut={() => void signOut()} />;
+    return <ManagerHome email={access.email} onSignOut={() => void signOut()} />;
   }
 
   if (access.role === "resolver") {
+    if (props.intent === "reporter") {
+      return (
+        <ReporterHome
+          email={access.email}
+          onSignOut={() => void signOut()}
+          onSwitchToResolver={() => props.onIntentChanged("resolver")}
+        />
+      );
+    }
     return (
-      <RoleHome
-        role="Resolver"
+      <ResolverHome
         email={access.email}
         onSignOut={() => void signOut()}
-        description="You are approved as a resolver. Manager approval queue stays under the Manager role."
+        onSwitchToReporter={() => props.onIntentChanged("reporter")}
       />
     );
   }
 
-  return (
-    <RoleHome
-      role="Reporter"
-      email={access.email}
-      onSignOut={() => void signOut()}
-      description="Reporter access is active. Ticket status flow uses: open, assigned, in_progress, resolved (awaiting manager approval), closed."
-    />
-  );
+  return <ReporterHome email={access.email} onSignOut={() => void signOut()} />;
 }

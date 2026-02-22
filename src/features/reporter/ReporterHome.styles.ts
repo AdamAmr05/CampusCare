@@ -1,0 +1,273 @@
+import { StyleSheet } from "react-native";
+import { theme } from "../../ui/theme";
+
+export const styles = StyleSheet.create({
+  listContent: {
+    gap: 12,
+    paddingBottom: 24,
+    paddingHorizontal: 2,
+  },
+  listHeader: {
+    gap: 12,
+  },
+  heroCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 16,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  headerActions: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  headerMeta: {
+    flex: 1,
+    gap: 4,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: theme.colors.red,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: theme.colors.textPrimary,
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: theme.colors.textSecondary,
+  },
+  signedInText: {
+    marginTop: 2,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+  signOutButton: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  signOutText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+  },
+  workspaceButton: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.black,
+    backgroundColor: "#fff2b8",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  workspaceButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
+  },
+  formCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 14,
+    gap: 9,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
+  },
+  input: {
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: "#fffdf4",
+    color: theme.colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  descriptionInput: {
+    minHeight: 88,
+    textAlignVertical: "top",
+  },
+  primaryButton: {
+    borderRadius: 12,
+    backgroundColor: theme.colors.black,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: theme.colors.white,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  secondaryButton: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    color: theme.colors.textPrimary,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  imageActionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  imageActionButton: {
+    flex: 1,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 170,
+    borderRadius: 12,
+    backgroundColor: "#ece6ce",
+  },
+  errorText: {
+    color: theme.colors.red,
+    fontSize: 13,
+  },
+  ticketCard: {
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 12,
+    gap: 4,
+  },
+  ticketHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  ticketTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
+  },
+  ticketMeta: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+  ticketDescription: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
+  },
+  ticketCardImage: {
+    marginTop: 2,
+    width: "100%",
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: "#ece6ce",
+  },
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.25,
+  },
+  emptyText: {
+    marginTop: 8,
+    color: theme.colors.textMuted,
+    fontSize: 14,
+  },
+  footerSpace: {
+    paddingVertical: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    maxHeight: "84%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: theme.colors.surface,
+    padding: 16,
+    gap: 10,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
+  },
+  modalClose: {
+    color: theme.colors.red,
+    fontWeight: "700",
+  },
+  modalDescription: {
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+  },
+  modalImage: {
+    marginTop: 8,
+    width: "100%",
+    height: 220,
+    borderRadius: 12,
+    backgroundColor: "#ece6ce",
+  },
+  modalSection: {
+    marginTop: 10,
+    fontSize: 15,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
+  },
+  historyCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: "#fffdf4",
+    padding: 10,
+    marginTop: 8,
+    gap: 4,
+  },
+  historyLine: {
+    color: theme.colors.textPrimary,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  historyNote: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+});
