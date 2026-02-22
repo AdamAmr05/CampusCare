@@ -4,6 +4,7 @@ This repository now includes:
 - Clerk authentication for Expo
 - Convex backend auth enforcement and role onboarding
 - Resolver request + manager approval workflow
+- Role-based ticket lifecycle backend (reporter, resolver, manager)
 
 ## Prerequisites
 
@@ -52,6 +53,12 @@ Platform shortcuts:
 npm run typecheck
 ```
 
+## Backend Tests
+
+```bash
+npx vitest run tests/tickets.backend.test.ts
+```
+
 ## Auth and role behavior
 
 - Only verified emails ending with `@giu-uni.de` can access protected backend features.
@@ -70,3 +77,15 @@ npm run typecheck
 - `resolverRequests.listPending`
 - `resolverRequests.approve`
 - `resolverRequests.reject`
+- `ticketsReporter.create`
+- `ticketsReporter.listMine`
+- `ticketsReporter.getMineById`
+- `ticketsManager.listActiveResolvers`
+- `ticketsManager.listOpenUnassigned`
+- `ticketsManager.assignResolver`
+- `ticketsManager.listResolvedAwaitingClose`
+- `ticketsManager.close`
+- `ticketsResolver.listAssignedToMe`
+- `ticketsResolver.setInProgress`
+- `ticketsResolver.markResolved`
+- `ticketsShared.getById`
