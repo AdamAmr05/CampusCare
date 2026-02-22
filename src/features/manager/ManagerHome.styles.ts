@@ -99,6 +99,9 @@ export const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
+  detailsPreviewArea: {
+    gap: 6,
+  },
   cardTitle: {
     flex: 1,
     fontSize: 16,

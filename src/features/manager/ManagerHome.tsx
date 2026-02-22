@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ResolverRequest } from "../auth/types";
 import { ImageLightbox } from "../tickets/ImageLightbox";
+import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import type { ResolverOption, Ticket } from "../tickets/types";
 import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
@@ -53,6 +54,8 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
   const [assignmentNotes, setAssignmentNotes] = useState<Record<string, string>>({});
   const [closureNotes, setClosureNotes] = useState<Record<string, string>>({});
   const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
+  const [selectedTicketPreview, setSelectedTicketPreview] = useState<Ticket | null>(null);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   const pendingRequests = useMemo(
     () => resolverRequestsQuery.results as ResolverRequest[],
@@ -153,6 +156,27 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
     [closeTicket, closureNotes],
   );
 
+  const openTicketDetails = useCallback((ticket: Ticket) => {
+    setSelectedTicketPreview(ticket);
+    setIsDetailsVisible(true);
+  }, []);
+
+  const closeTicketDetails = useCallback(() => {
+    setIsDetailsVisible(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDetailsVisible) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSelectedTicketPreview(null);
+    }, 260);
+
+    return () => clearTimeout(timeoutId);
+  }, [isDetailsVisible]);
+
   const renderResolverRequest = useCallback(
     ({ item }: { item: ResolverRequest }) => {
       const noteValue = decisionNotes[item._id] ?? "";
@@ -206,23 +230,28 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
 
       return (
         <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>{item.category}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
-              <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-                {getTicketStatusLabel(item.status)}
-              </Text>
+          <Pressable onPress={() => openTicketDetails(item)} style={styles.detailsPreviewArea}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>{item.category}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
+                <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                  {getTicketStatusLabel(item.status)}
+                </Text>
+              </View>
             </View>
-          </View>
-          <Text style={styles.metaText}>{item.location}</Text>
-          {item.imageUrl ? (
-            <TicketImagePreview
-              uri={item.imageUrl}
-              style={styles.ticketImage}
-              onPress={() => setLightboxImageUri(item.imageUrl)}
-            />
-          ) : null}
-          <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
+            <Text style={styles.metaText}>{item.location}</Text>
+            {item.imageUrl ? (
+              <TicketImagePreview
+                uri={item.imageUrl}
+                style={styles.ticketImage}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  setLightboxImageUri(item.imageUrl);
+                }}
+              />
+            ) : null}
+            <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
+          </Pressable>
 
           <Text style={styles.smallLabel}>Assign Resolver</Text>
           <View style={styles.resolverChipRow}>
@@ -274,7 +303,14 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
         </View>
       );
     },
-    [activeResolvers, assignmentNotes, onAssignResolver, processingId, selectedResolverByTicket],
+    [
+      activeResolvers,
+      assignmentNotes,
+      onAssignResolver,
+      openTicketDetails,
+      processingId,
+      selectedResolverByTicket,
+    ],
   );
 
   const renderResolvedTicket = useCallback(
@@ -285,31 +321,39 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
 
       return (
         <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>{item.category}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
-              <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-                {getTicketStatusLabel(item.status)}
-              </Text>
+          <Pressable onPress={() => openTicketDetails(item)} style={styles.detailsPreviewArea}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>{item.category}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
+                <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                  {getTicketStatusLabel(item.status)}
+                </Text>
+              </View>
             </View>
-          </View>
-          <Text style={styles.metaText}>{item.location}</Text>
-          {item.imageUrl ? (
-            <TicketImagePreview
-              uri={item.imageUrl}
-              style={styles.ticketImage}
-              onPress={() => setLightboxImageUri(item.imageUrl)}
-            />
-          ) : null}
-          <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
-          <Text style={styles.bodyText}>Resolver note: {item.resolutionNote ?? "No note."}</Text>
-          {item.resolutionImageUrl ? (
-            <TicketImagePreview
-              uri={item.resolutionImageUrl}
-              style={styles.ticketImage}
-              onPress={() => setLightboxImageUri(item.resolutionImageUrl)}
-            />
-          ) : null}
+            <Text style={styles.metaText}>{item.location}</Text>
+            {item.imageUrl ? (
+              <TicketImagePreview
+                uri={item.imageUrl}
+                style={styles.ticketImage}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  setLightboxImageUri(item.imageUrl);
+                }}
+              />
+            ) : null}
+            <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
+            <Text style={styles.bodyText}>Resolver note: {item.resolutionNote ?? "No note."}</Text>
+            {item.resolutionImageUrl ? (
+              <TicketImagePreview
+                uri={item.resolutionImageUrl}
+                style={styles.ticketImage}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  setLightboxImageUri(item.resolutionImageUrl);
+                }}
+              />
+            ) : null}
+          </Pressable>
 
           <TextInput
             value={noteValue}
@@ -331,7 +375,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
         </View>
       );
     },
-    [closureNotes, onCloseTicket, processingId],
+    [closureNotes, onCloseTicket, openTicketDetails, processingId],
   );
 
   const activeLoadStatus = activeTab === "resolver_requests"
@@ -482,6 +526,13 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           ListFooterComponent={listFooter}
         />
       ) : null}
+      <TicketDetailsPanel
+        visible={isDetailsVisible}
+        ticket={selectedTicketPreview}
+        historyEntries={null}
+        historyUnavailableText="Status history is not shown in Manager lists yet."
+        onClose={closeTicketDetails}
+      />
       <ImageLightbox imageUri={lightboxImageUri} onClose={() => setLightboxImageUri(null)} />
     </AppScreen>
   );

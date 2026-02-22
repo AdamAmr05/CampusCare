@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -61,11 +61,6 @@ export function ReporterHome(props: {
     setIsDetailsVisible(false);
   }, []);
 
-  const clearSelectedTicket = useCallback(() => {
-    setSelectedTicketId(null);
-    setSelectedTicketPreview(null);
-  }, []);
-
   const openLightbox = useCallback((imageUri: string) => {
     setLightboxImageUri(imageUri);
   }, []);
@@ -73,6 +68,19 @@ export function ReporterHome(props: {
   const closeLightbox = useCallback(() => {
     setLightboxImageUri(null);
   }, []);
+
+  useEffect(() => {
+    if (isDetailsVisible) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSelectedTicketId(null);
+      setSelectedTicketPreview(null);
+    }, 260);
+
+    return () => clearTimeout(timeoutId);
+  }, [isDetailsVisible]);
 
   const onSelectImageSource = useCallback(async (source: TicketImageSource) => {
     setErrorMessage("");
@@ -317,8 +325,6 @@ export function ReporterHome(props: {
         selectedTicketId={selectedTicketId}
         previewTicket={selectedTicketPreview}
         onClose={closeTicketDetails}
-        onClosed={clearSelectedTicket}
-        onOpenImage={openLightbox}
       />
       <ImageLightbox imageUri={lightboxImageUri} onClose={closeLightbox} />
     </AppScreen>

@@ -88,11 +88,19 @@ export const styles = StyleSheet.create({
     padding: 16,
     gap: 8,
   },
+  detailsPreviewArea: {
+    gap: 8,
+  },
   ticketHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   ticketTitle: {
     flex: 1,

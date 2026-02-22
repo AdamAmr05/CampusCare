@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -15,6 +15,7 @@ import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
+import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import {
   selectTicketImage,
@@ -53,6 +54,8 @@ export function ResolverHome(props: {
   const [processingTicketId, setProcessingTicketId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
+  const [selectedTicketPreview, setSelectedTicketPreview] = useState<Ticket | null>(null);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   const onSelectResolutionImage = useCallback(async (args: {
     ticketId: string;
@@ -142,6 +145,27 @@ export function ResolverHome(props: {
     [deleteUnusedUpload, generateUploadUrl, markResolved, resolutionImages, resolutionNotes],
   );
 
+  const openTicketDetails = useCallback((ticket: Ticket) => {
+    setSelectedTicketPreview(ticket);
+    setIsDetailsVisible(true);
+  }, []);
+
+  const closeTicketDetails = useCallback(() => {
+    setIsDetailsVisible(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDetailsVisible) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSelectedTicketPreview(null);
+    }, 260);
+
+    return () => clearTimeout(timeoutId);
+  }, [isDetailsVisible]);
+
   const renderTicket = useCallback(
     ({ item }: { item: Ticket }) => {
       const statusColors = getTicketStatusColors(item.status);
@@ -154,28 +178,33 @@ export function ResolverHome(props: {
 
       return (
         <View style={styles.ticketCard}>
-          <View style={styles.ticketHeaderRow}>
-            <Text style={styles.ticketTitle}>{item.category}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
-              <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-                {getTicketStatusLabel(item.status)}
-              </Text>
+          <Pressable onPress={() => openTicketDetails(item)} style={styles.detailsPreviewArea}>
+            <View style={styles.ticketHeaderRow}>
+              <Text style={styles.ticketTitle}>{item.category}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
+                <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                  {getTicketStatusLabel(item.status)}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
-            <Text style={styles.ticketMeta}>{item.location}</Text>
-          </View>
-          {item.imageUrl ? (
-            <TicketImagePreview
-              uri={item.imageUrl}
-              style={styles.ticketImage}
-              onPress={() => setLightboxImageUri(item.imageUrl)}
-            />
-          ) : null}
-          <Text style={styles.ticketDescription}>{item.description}</Text>
-          <Text style={styles.ticketMeta}>Updated {formatTimestamp(item.updatedAt)}</Text>
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
+              <Text style={styles.ticketMeta}>{item.location}</Text>
+            </View>
+            {item.imageUrl ? (
+              <TicketImagePreview
+                uri={item.imageUrl}
+                style={styles.ticketImage}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  setLightboxImageUri(item.imageUrl);
+                }}
+              />
+            ) : null}
+            <Text style={styles.ticketDescription}>{item.description}</Text>
+            <Text style={styles.ticketMeta}>Updated {formatTimestamp(item.updatedAt)}</Text>
+          </Pressable>
 
           {item.status === "assigned" ? (
             <>
@@ -294,7 +323,17 @@ export function ResolverHome(props: {
         </View>
       );
     },
-    [imageSelectionTarget, onResolve, onSelectResolutionImage, onStartWork, processingTicketId, progressNotes, resolutionImages, resolutionNotes],
+    [
+      imageSelectionTarget,
+      onResolve,
+      onSelectResolutionImage,
+      onStartWork,
+      openTicketDetails,
+      processingTicketId,
+      progressNotes,
+      resolutionImages,
+      resolutionNotes,
+    ],
   );
 
   return (
@@ -341,6 +380,13 @@ export function ResolverHome(props: {
             ) : null}
           </View>
         }
+      />
+      <TicketDetailsPanel
+        visible={isDetailsVisible}
+        ticket={selectedTicketPreview}
+        historyEntries={null}
+        historyUnavailableText="Status history is not shown in Resolver lists yet."
+        onClose={closeTicketDetails}
       />
       <ImageLightbox imageUri={lightboxImageUri} onClose={() => setLightboxImageUri(null)} />
     </AppScreen>
