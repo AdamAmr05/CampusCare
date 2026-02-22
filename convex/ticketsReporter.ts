@@ -3,16 +3,18 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import {
   appendTicketStatusHistory,
+  assertValidTicketImageFile,
   normalizeRequiredText,
   TICKET_CATEGORY_MAX_LENGTH,
   TICKET_DESCRIPTION_MAX_LENGTH,
   TICKET_LOCATION_MAX_LENGTH,
+  toTicketWithImageUrl,
 } from "./lib/tickets";
 import {
-  ticketDocValidator,
+  ticketWithImageUrlValidator,
   ticketWithHistoryValidator,
 } from "./lib/ticketValidators";
-import { requireRole } from "./lib/auth";
+import { requireRoleIn } from "./lib/auth";
 
 const createTicketResponseValidator = v.object({
   ticketId: v.id("tickets"),
@@ -27,7 +29,9 @@ export const create = mutation({
   },
   returns: createTicketResponseValidator,
   handler: async (ctx, args) => {
-    const reporter = await requireRole(ctx, "reporter");
+    const reporter = await requireRoleIn(ctx, ["reporter", "resolver"]);
+    const uploadedFile = await ctx.db.system.get("_storage", args.imageStorageId);
+    assertValidTicketImageFile(uploadedFile);
 
     const category = normalizeRequiredText(args.category, "Category", TICKET_CATEGORY_MAX_LENGTH);
     const description = normalizeRequiredText(
@@ -46,6 +50,7 @@ export const create = mutation({
       description,
       location,
       imageStorageId: args.imageStorageId,
+      resolutionImageStorageId: null,
       status: "open",
       resolutionNote: null,
       createdAt: now,
@@ -66,21 +71,79 @@ export const create = mutation({
   },
 });
 
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    await requireRoleIn(ctx, ["reporter", "resolver"]);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const deleteUnusedUpload = mutation({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireRoleIn(ctx, ["reporter", "resolver"]);
+
+    const referencedReporterImages = await ctx.db
+      .query("tickets")
+      .withIndex("by_imageStorageId", (queryBuilder) =>
+        queryBuilder.eq("imageStorageId", args.storageId),
+      )
+      .take(1);
+
+    if (referencedReporterImages.length > 0) {
+      return null;
+    }
+
+    const referencedResolutionImages = await ctx.db
+      .query("tickets")
+      .withIndex("by_resolutionImageStorageId", (queryBuilder) =>
+        queryBuilder.eq("resolutionImageStorageId", args.storageId),
+      )
+      .take(1);
+
+    if (referencedResolutionImages.length > 0) {
+      return null;
+    }
+
+    const uploadedFile = await ctx.db.system.get("_storage", args.storageId);
+    if (!uploadedFile) {
+      return null;
+    }
+
+    await ctx.storage.delete(args.storageId);
+    return null;
+  },
+});
+
 export const listMine = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
-  returns: paginationResultValidator(ticketDocValidator),
+  returns: paginationResultValidator(ticketWithImageUrlValidator),
   handler: async (ctx, args) => {
-    const reporter = await requireRole(ctx, "reporter");
+    const reporter = await requireRoleIn(ctx, ["reporter", "resolver"]);
 
-    return await ctx.db
+    const paginated = await ctx.db
       .query("tickets")
       .withIndex("by_reporterUserId_and_createdAt", (queryBuilder) =>
         queryBuilder.eq("reporterUserId", reporter._id),
       )
       .order("desc")
       .paginate(args.paginationOpts);
+
+    const page = await Promise.all(
+      paginated.page.map((ticket) => toTicketWithImageUrl(ctx, ticket)),
+    );
+
+    return {
+      ...paginated,
+      page,
+    };
   },
 });
 
@@ -90,7 +153,7 @@ export const getMineById = query({
   },
   returns: v.union(ticketWithHistoryValidator, v.null()),
   handler: async (ctx, args) => {
-    const reporter = await requireRole(ctx, "reporter");
+    const reporter = await requireRoleIn(ctx, ["reporter", "resolver"]);
     const ticket = await ctx.db.get(args.ticketId);
 
     if (!ticket) {
@@ -109,8 +172,10 @@ export const getMineById = query({
       .order("asc")
       .collect();
 
+    const ticketWithImageUrl = await toTicketWithImageUrl(ctx, ticket);
+
     return {
-      ticket,
+      ticket: ticketWithImageUrl,
       history,
     };
   },

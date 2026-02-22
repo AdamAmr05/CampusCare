@@ -7,8 +7,9 @@ import {
   assertStatusTransition,
   normalizeOptionalText,
   TICKET_NOTE_MAX_LENGTH,
+  toTicketWithImageUrl,
 } from "./lib/tickets";
-import { ticketDocValidator } from "./lib/ticketValidators";
+import { ticketWithImageUrlValidator } from "./lib/ticketValidators";
 
 const resolverOptionValidator = v.object({
   _id: v.id("users"),
@@ -41,17 +42,26 @@ export const listOpenUnassigned = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
-  returns: paginationResultValidator(ticketDocValidator),
+  returns: paginationResultValidator(ticketWithImageUrlValidator),
   handler: async (ctx, args) => {
     await requireRole(ctx, "manager");
 
-    return await ctx.db
+    const paginated = await ctx.db
       .query("tickets")
       .withIndex("by_status_and_resolverUserId_and_createdAt", (queryBuilder) =>
         queryBuilder.eq("status", "open").eq("resolverUserId", null),
       )
       .order("desc")
       .paginate(args.paginationOpts);
+
+    const page = await Promise.all(
+      paginated.page.map((ticket) => toTicketWithImageUrl(ctx, ticket)),
+    );
+
+    return {
+      ...paginated,
+      page,
+    };
   },
 });
 
@@ -111,17 +121,26 @@ export const listResolvedAwaitingClose = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
-  returns: paginationResultValidator(ticketDocValidator),
+  returns: paginationResultValidator(ticketWithImageUrlValidator),
   handler: async (ctx, args) => {
     await requireRole(ctx, "manager");
 
-    return await ctx.db
+    const paginated = await ctx.db
       .query("tickets")
       .withIndex("by_status_and_updatedAt", (queryBuilder) =>
         queryBuilder.eq("status", "resolved"),
       )
       .order("desc")
       .paginate(args.paginationOpts);
+
+    const page = await Promise.all(
+      paginated.page.map((ticket) => toTicketWithImageUrl(ctx, ticket)),
+    );
+
+    return {
+      ...paginated,
+      page,
+    };
   },
 });
 

@@ -120,3 +120,15 @@ export async function requireRole(
 
   return user;
 }
+
+export async function requireRoleIn(
+  ctx: AuthCtx,
+  roles: ReadonlyArray<"reporter" | "resolver" | "manager">,
+): Promise<Doc<"users">> {
+  const user = await requireActiveUser(ctx);
+  if (!roles.includes(user.role)) {
+    throw new ConvexError("Not authorized for this operation.");
+  }
+
+  return user;
+}

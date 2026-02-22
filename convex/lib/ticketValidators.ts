@@ -11,6 +11,28 @@ export const ticketDocValidator = v.object({
   description: v.string(),
   location: v.string(),
   imageStorageId: v.id("_storage"),
+  resolutionImageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  status: ticketStatusValidator,
+  resolutionNote: v.union(v.string(), v.null()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  resolvedAt: v.union(v.number(), v.null()),
+  closedAt: v.union(v.number(), v.null()),
+});
+
+export const ticketWithImageUrlValidator = v.object({
+  _id: v.id("tickets"),
+  _creationTime: v.number(),
+  reporterUserId: v.id("users"),
+  managerUserId: v.union(v.id("users"), v.null()),
+  resolverUserId: v.union(v.id("users"), v.null()),
+  category: v.string(),
+  description: v.string(),
+  location: v.string(),
+  imageStorageId: v.id("_storage"),
+  imageUrl: v.union(v.string(), v.null()),
+  resolutionImageStorageId: v.union(v.id("_storage"), v.null()),
+  resolutionImageUrl: v.union(v.string(), v.null()),
   status: ticketStatusValidator,
   resolutionNote: v.union(v.string(), v.null()),
   createdAt: v.number(),
@@ -31,6 +53,6 @@ export const ticketStatusHistoryDocValidator = v.object({
 });
 
 export const ticketWithHistoryValidator = v.object({
-  ticket: ticketDocValidator,
+  ticket: ticketWithImageUrlValidator,
   history: v.array(ticketStatusHistoryDocValidator),
 });

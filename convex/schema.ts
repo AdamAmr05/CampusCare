@@ -29,6 +29,7 @@ export default defineSchema({
     description: v.string(),
     location: v.string(),
     imageStorageId: v.id("_storage"),
+    resolutionImageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
     status: ticketStatusValidator,
     resolutionNote: v.union(v.string(), v.null()),
     createdAt: v.number(),
@@ -37,6 +38,8 @@ export default defineSchema({
     closedAt: v.union(v.number(), v.null()),
   })
     .index("by_reporterUserId_and_createdAt", ["reporterUserId", "createdAt"])
+    .index("by_imageStorageId", ["imageStorageId"])
+    .index("by_resolutionImageStorageId", ["resolutionImageStorageId"])
     .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_status_and_resolverUserId_and_createdAt", ["status", "resolverUserId", "createdAt"])
     .index("by_status_and_updatedAt", ["status", "updatedAt"])

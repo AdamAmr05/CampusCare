@@ -4,28 +4,39 @@ import { mutation, query } from "./_generated/server";
 import { requireRole } from "./lib/auth";
 import {
   appendTicketStatusHistory,
+  assertValidTicketImageFile,
   assertStatusTransition,
   normalizeOptionalText,
   normalizeRequiredText,
   TICKET_NOTE_MAX_LENGTH,
+  toTicketWithImageUrl,
 } from "./lib/tickets";
-import { ticketDocValidator } from "./lib/ticketValidators";
+import { ticketWithImageUrlValidator } from "./lib/ticketValidators";
 
 export const listAssignedToMe = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
-  returns: paginationResultValidator(ticketDocValidator),
+  returns: paginationResultValidator(ticketWithImageUrlValidator),
   handler: async (ctx, args) => {
     const resolver = await requireRole(ctx, "resolver");
 
-    return await ctx.db
+    const paginated = await ctx.db
       .query("tickets")
       .withIndex("by_resolverUserId_and_updatedAt", (queryBuilder) =>
         queryBuilder.eq("resolverUserId", resolver._id),
       )
       .order("desc")
       .paginate(args.paginationOpts);
+
+    const page = await Promise.all(
+      paginated.page.map((ticket) => toTicketWithImageUrl(ctx, ticket)),
+    );
+
+    return {
+      ...paginated,
+      page,
+    };
   },
 });
 
@@ -81,6 +92,7 @@ export const markResolved = mutation({
   args: {
     ticketId: v.id("tickets"),
     resolutionNote: v.string(),
+    resolutionImageStorageId: v.optional(v.id("_storage")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -100,14 +112,25 @@ export const markResolved = mutation({
       "Resolution note",
       TICKET_NOTE_MAX_LENGTH,
     );
+    const resolutionImageStorageId = args.resolutionImageStorageId ?? null;
+    const existingResolutionImageStorageId = ticket.resolutionImageStorageId ?? null;
+
+    if (resolutionImageStorageId) {
+      const uploadedFile = await ctx.db.system.get("_storage", resolutionImageStorageId);
+      assertValidTicketImageFile(uploadedFile);
+    }
 
     if (ticket.status === "resolved") {
-      if (ticket.resolutionNote === resolutionNote) {
+      const sameResolutionPayload =
+        ticket.resolutionNote === resolutionNote &&
+        existingResolutionImageStorageId === resolutionImageStorageId;
+
+      if (sameResolutionPayload) {
         return null;
       }
 
       throw new ConvexError(
-        "Ticket is already resolved and awaiting manager closure. Resolution note cannot be changed.",
+        "Ticket is already resolved and awaiting manager closure. Resolution details cannot be changed.",
       );
     }
 
@@ -118,6 +141,7 @@ export const markResolved = mutation({
     await ctx.db.patch(ticket._id, {
       status: "resolved",
       resolutionNote,
+      resolutionImageStorageId,
       updatedAt: now,
       resolvedAt: now,
     });

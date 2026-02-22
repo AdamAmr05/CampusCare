@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { query } from "./_generated/server";
 import { requireActiveUser } from "./lib/auth";
-import { canUserAccessTicket } from "./lib/tickets";
+import { canUserAccessTicket, toTicketWithImageUrl } from "./lib/tickets";
 import { ticketWithHistoryValidator } from "./lib/ticketValidators";
 
 export const getById = query({
@@ -29,8 +29,10 @@ export const getById = query({
       .order("asc")
       .collect();
 
+    const ticketWithImageUrl = await toTicketWithImageUrl(ctx, ticket);
+
     return {
-      ticket,
+      ticket: ticketWithImageUrl,
       history,
     };
   },

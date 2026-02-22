@@ -1,6 +1,6 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 type TicketStatus = Doc<"tickets">["status"];
 
@@ -16,6 +16,8 @@ export const TICKET_CATEGORY_MAX_LENGTH = 80;
 export const TICKET_LOCATION_MAX_LENGTH = 140;
 export const TICKET_DESCRIPTION_MAX_LENGTH = 1200;
 export const TICKET_NOTE_MAX_LENGTH = 1200;
+export const TICKET_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+export const TICKET_IMAGE_MAX_MEGABYTES = 8;
 
 export function normalizeRequiredText(
   value: string,
@@ -73,6 +75,63 @@ export function canUserAccessTicket(
   }
 
   return ticket.resolverUserId === user._id;
+}
+
+type StorageMetadata = {
+  contentType?: string | null;
+  size?: number;
+};
+
+export function assertValidTicketImageFile(file: StorageMetadata | null): void {
+  if (!file) {
+    throw new ConvexError("Uploaded image was not found. Please try again.");
+  }
+
+  const contentType =
+    typeof file.contentType === "string" ? file.contentType.toLowerCase() : null;
+  const hasUnsupportedContentType = Boolean(
+    contentType &&
+      !contentType.startsWith("image/") &&
+      contentType !== "application/octet-stream",
+  );
+
+  if (hasUnsupportedContentType) {
+    throw new ConvexError("Uploaded file must be an image.");
+  }
+
+  if (typeof file.size !== "number" || file.size > TICKET_IMAGE_MAX_BYTES) {
+    throw new ConvexError(
+      `Image must be ${TICKET_IMAGE_MAX_MEGABYTES}MB or smaller.`,
+    );
+  }
+}
+
+export type TicketWithImageUrl = Omit<Doc<"tickets">, "resolutionImageStorageId"> & {
+  resolutionImageStorageId: Id<"_storage"> | null;
+  imageUrl: string | null;
+  resolutionImageUrl: string | null;
+};
+
+export async function toTicketWithImageUrl(
+  ctx: QueryCtx,
+  ticket: Doc<"tickets">,
+): Promise<TicketWithImageUrl> {
+  const resolutionImageStorageId = ticket.resolutionImageStorageId ?? null;
+  const imageUrlPromise = ctx.storage.getUrl(ticket.imageStorageId);
+  const resolutionImageUrlPromise = resolutionImageStorageId
+    ? ctx.storage.getUrl(resolutionImageStorageId)
+    : Promise.resolve(null);
+  const [imageUrl, resolutionImageUrl] = await Promise.all([
+    imageUrlPromise,
+    resolutionImageUrlPromise,
+  ]);
+
+  return {
+    ...ticket,
+    resolutionImageStorageId,
+    imageUrl,
+    resolutionImageUrl,
+  };
 }
 
 export async function appendTicketStatusHistory(

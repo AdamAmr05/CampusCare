@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
+import { assertValidTicketImageFile } from "../convex/lib/tickets";
 import schema from "../convex/schema";
 
 const convexModules = (
@@ -17,12 +18,22 @@ function createHarness() {
 
 type TestHarness = ReturnType<typeof createHarness>;
 type IdentityClient = ReturnType<TestHarness["withIdentity"]>;
+const TICKET_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+async function createStorageFileId(
+  t: TestHarness,
+  args: { contentType: string; sizeBytes: number },
+): Promise<Id<"_storage">> {
+  return await t.run(async (ctx) => {
+    const bytes = new Uint8Array(args.sizeBytes);
+    return await ctx.storage.store(new Blob([bytes], { type: args.contentType }));
+  });
+}
 
 async function createStorageImageId(t: TestHarness): Promise<Id<"_storage">> {
-  return await t.run(async (ctx) => {
-    return await ctx.storage.store(
-      new Blob(["fake image"], { type: "image/jpeg" }),
-    );
+  return await createStorageFileId(t, {
+    contentType: "image/jpeg",
+    sizeBytes: 16,
   });
 }
 
@@ -238,6 +249,43 @@ describe("ticket lifecycle and access control", () => {
     ).rejects.toThrow(/already resolved and awaiting manager closure/);
   });
 
+  it("allows resolver to add an optional resolution image while resolving", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "11");
+    const { manager, resolver, resolverAccessAfterApproval } =
+      await seedResolverAndApprove(t);
+
+    const ticketId = await createTicketAsReporter(t, reporter);
+    const resolutionImageStorageId = await createStorageImageId(t);
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: resolverAccessAfterApproval.userId,
+    });
+
+    await resolver.mutation(api.ticketsResolver.setInProgress, {
+      ticketId,
+    });
+
+    await resolver.mutation(api.ticketsResolver.markResolved, {
+      ticketId,
+      resolutionNote: "Replaced fixture and uploaded completion evidence.",
+      resolutionImageStorageId,
+    });
+
+    const details = await manager.query(api.ticketsShared.getById, {
+      ticketId,
+    });
+
+    expect(details).not.toBeNull();
+    if (!details) {
+      throw new Error("Ticket details should not be null.");
+    }
+
+    expect(details.ticket.resolutionImageStorageId).toBe(resolutionImageStorageId);
+    expect(details.ticket.resolutionImageUrl).toBeTruthy();
+  });
+
   it("allows only managers to close resolved tickets", async () => {
     const t = createHarness();
     const { reporter } = await seedReporter(t, "4");
@@ -262,6 +310,34 @@ describe("ticket lifecycle and access control", () => {
     ).rejects.toThrow(/Not authorized for this operation/);
   });
 
+  it("rejects oversized resolution attachments", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "12");
+    const { manager, resolver, resolverAccessAfterApproval } =
+      await seedResolverAndApprove(t);
+
+    const ticketId = await createTicketAsReporter(t, reporter);
+    const oversizedResolutionImageId = await createStorageFileId(t, {
+      contentType: "image/jpeg",
+      sizeBytes: TICKET_IMAGE_MAX_BYTES + 1,
+    });
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: resolverAccessAfterApproval.userId,
+    });
+
+    await resolver.mutation(api.ticketsResolver.setInProgress, { ticketId });
+
+    await expect(
+      resolver.mutation(api.ticketsResolver.markResolved, {
+        ticketId,
+        resolutionNote: "Attempted with oversized attachment.",
+        resolutionImageStorageId: oversizedResolutionImageId,
+      }),
+    ).rejects.toThrow(/8MB or smaller/);
+  });
+
   it("prevents reporters from viewing other reporters' tickets", async () => {
     const t = createHarness();
     const { reporter: reporterA } = await seedReporter(t, "5");
@@ -272,5 +348,90 @@ describe("ticket lifecycle and access control", () => {
     await expect(
       reporterB.query(api.ticketsShared.getById, { ticketId }),
     ).rejects.toThrow(/Not authorized to view this ticket/);
+  });
+
+  it("rejects non-image content types when metadata is available", () => {
+    expect(() =>
+      assertValidTicketImageFile({ contentType: "text/plain", size: 16 }),
+    ).toThrow(/Uploaded file must be an image/);
+  });
+
+  it("rejects images above the configured size limit", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "9");
+    const tooLargeImageId = await createStorageFileId(t, {
+      contentType: "image/jpeg",
+      sizeBytes: TICKET_IMAGE_MAX_BYTES + 1,
+    });
+
+    await expect(
+      reporter.mutation(api.ticketsReporter.create, {
+        category: "Electrical",
+        description: "Image too large test.",
+        location: "Building C - Floor 2",
+        imageStorageId: tooLargeImageId,
+      }),
+    ).rejects.toThrow(/8MB or smaller/);
+  });
+
+  it("deletes only unreferenced uploads", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "10");
+    const { manager, resolver, resolverAccessAfterApproval } =
+      await seedResolverAndApprove(t);
+
+    const unusedUploadId = await createStorageImageId(t);
+    await reporter.mutation(api.ticketsReporter.deleteUnusedUpload, {
+      storageId: unusedUploadId,
+    });
+
+    const deletedMetadata = await t.run(async (ctx) => {
+      return await ctx.db.system.get("_storage", unusedUploadId);
+    });
+    expect(deletedMetadata).toBeNull();
+
+    const ticketImageId = await createStorageImageId(t);
+    await reporter.mutation(api.ticketsReporter.create, {
+      category: "Plumbing",
+      description: "Sink is leaking.",
+      location: "Building D - Floor 1",
+      imageStorageId: ticketImageId,
+    });
+
+    await reporter.mutation(api.ticketsReporter.deleteUnusedUpload, {
+      storageId: ticketImageId,
+    });
+
+    const keptMetadata = await t.run(async (ctx) => {
+      return await ctx.db.system.get("_storage", ticketImageId);
+    });
+    expect(keptMetadata).not.toBeNull();
+
+    const resolutionImageId = await createStorageImageId(t);
+    const ticketId = await createTicketAsReporter(t, reporter);
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: resolverAccessAfterApproval.userId,
+    });
+
+    await resolver.mutation(api.ticketsResolver.setInProgress, {
+      ticketId,
+    });
+
+    await resolver.mutation(api.ticketsResolver.markResolved, {
+      ticketId,
+      resolutionNote: "Resolved with photo evidence.",
+      resolutionImageStorageId: resolutionImageId,
+    });
+
+    await reporter.mutation(api.ticketsReporter.deleteUnusedUpload, {
+      storageId: resolutionImageId,
+    });
+
+    const keptResolutionMetadata = await t.run(async (ctx) => {
+      return await ctx.db.system.get("_storage", resolutionImageId);
+    });
+    expect(keptResolutionMetadata).not.toBeNull();
   });
 });
