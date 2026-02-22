@@ -36,8 +36,8 @@ export const ReporterTicketDetailsModal = memo(function ReporterTicketDetailsMod
     <Modal
       visible={props.visible}
       animationType="slide"
-      presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
-      allowSwipeDismissal={Platform.OS === "ios"}
+      presentationStyle="fullScreen"
+      allowSwipeDismissal={false}
       hardwareAccelerated={Platform.OS === "android"}
       statusBarTranslucent={Platform.OS === "android"}
       onRequestClose={props.onClose}
