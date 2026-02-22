@@ -90,6 +90,7 @@ export async function getCurrentUserByTokenIdentifier(
 
 export async function requireCurrentUser(ctx: AuthCtx): Promise<Doc<"users">> {
   const identity = await requireIdentity(ctx);
+  requireVerifiedGiuEmail(identity);
   const user = await getCurrentUserByTokenIdentifier(ctx, identity.tokenIdentifier);
 
   if (!user) {
