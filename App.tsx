@@ -3,6 +3,7 @@ import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppRoot } from "./src/app/AppRoot";
 import { ErrorScreen } from "./src/ui/Screens";
 
@@ -25,10 +26,12 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <AppRoot />
-      </ConvexProviderWithClerk>
-    </ClerkProvider>
+    <SafeAreaProvider>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+          <AppRoot />
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
+    </SafeAreaProvider>
   );
 }

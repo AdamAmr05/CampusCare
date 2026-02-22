@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ResolverRequest } from "../auth/types";
 import { ImageLightbox } from "../tickets/ImageLightbox";
+import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import type { ResolverOption, Ticket } from "../tickets/types";
 import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
 import { AppScreen } from "../../ui/AppScreen";
@@ -215,9 +216,11 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           </View>
           <Text style={styles.metaText}>{item.location}</Text>
           {item.imageUrl ? (
-            <Pressable onPress={() => setLightboxImageUri(item.imageUrl)}>
-              <Image source={{ uri: item.imageUrl }} style={styles.ticketImage} />
-            </Pressable>
+            <TicketImagePreview
+              uri={item.imageUrl}
+              style={styles.ticketImage}
+              onPress={() => setLightboxImageUri(item.imageUrl)}
+            />
           ) : null}
           <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
 
@@ -292,16 +295,20 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           </View>
           <Text style={styles.metaText}>{item.location}</Text>
           {item.imageUrl ? (
-            <Pressable onPress={() => setLightboxImageUri(item.imageUrl)}>
-              <Image source={{ uri: item.imageUrl }} style={styles.ticketImage} />
-            </Pressable>
+            <TicketImagePreview
+              uri={item.imageUrl}
+              style={styles.ticketImage}
+              onPress={() => setLightboxImageUri(item.imageUrl)}
+            />
           ) : null}
           <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
           <Text style={styles.bodyText}>Resolver note: {item.resolutionNote ?? "No note."}</Text>
           {item.resolutionImageUrl ? (
-            <Pressable onPress={() => setLightboxImageUri(item.resolutionImageUrl)}>
-              <Image source={{ uri: item.resolutionImageUrl }} style={styles.ticketImage} />
-            </Pressable>
+            <TicketImagePreview
+              uri={item.resolutionImageUrl}
+              style={styles.ticketImage}
+              onPress={() => setLightboxImageUri(item.resolutionImageUrl)}
+            />
           ) : null}
 
           <TextInput

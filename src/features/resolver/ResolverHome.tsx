@@ -1,12 +1,12 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
-  Image,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -15,6 +15,7 @@ import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
+import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import {
   selectTicketImage,
   type TicketImageAsset,
@@ -162,11 +163,16 @@ export function ResolverHome(props: {
             </View>
           </View>
 
-          <Text style={styles.ticketMeta}>{item.location}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
+            <Text style={styles.ticketMeta}>{item.location}</Text>
+          </View>
           {item.imageUrl ? (
-            <Pressable onPress={() => setLightboxImageUri(item.imageUrl)}>
-              <Image source={{ uri: item.imageUrl }} style={styles.ticketImage} />
-            </Pressable>
+            <TicketImagePreview
+              uri={item.imageUrl}
+              style={styles.ticketImage}
+              onPress={() => setLightboxImageUri(item.imageUrl)}
+            />
           ) : null}
           <Text style={styles.ticketDescription}>{item.description}</Text>
           <Text style={styles.ticketMeta}>Updated {formatTimestamp(item.updatedAt)}</Text>
@@ -218,7 +224,7 @@ export function ResolverHome(props: {
                 >
                   <Text style={styles.secondaryButtonText}>
                     {imageSelectionTarget?.ticketId === item._id &&
-                    imageSelectionTarget.source === "camera"
+                      imageSelectionTarget.source === "camera"
                       ? "Opening..."
                       : "Take Photo"}
                   </Text>
@@ -234,7 +240,7 @@ export function ResolverHome(props: {
                 >
                   <Text style={styles.secondaryButtonText}>
                     {imageSelectionTarget?.ticketId === item._id &&
-                    imageSelectionTarget.source === "library"
+                      imageSelectionTarget.source === "library"
                       ? "Opening..."
                       : "Choose Library"}
                   </Text>
@@ -242,9 +248,11 @@ export function ResolverHome(props: {
               </View>
               {resolutionImage ? (
                 <>
-                  <Pressable onPress={() => setLightboxImageUri(resolutionImage.uri)}>
-                    <Image source={{ uri: resolutionImage.uri }} style={styles.resolutionPreviewImage} />
-                  </Pressable>
+                  <TicketImagePreview
+                    uri={resolutionImage.uri}
+                    style={styles.resolutionPreviewImage}
+                    onPress={() => setLightboxImageUri(resolutionImage.uri)}
+                  />
                   <Pressable
                     onPress={() =>
                       setResolutionImages((previous) => ({
@@ -274,9 +282,11 @@ export function ResolverHome(props: {
           {item.status === "resolved" ? (
             <>
               {item.resolutionImageUrl ? (
-                <Pressable onPress={() => setLightboxImageUri(item.resolutionImageUrl)}>
-                  <Image source={{ uri: item.resolutionImageUrl }} style={styles.resolutionPreviewImage} />
-                </Pressable>
+                <TicketImagePreview
+                  uri={item.resolutionImageUrl}
+                  style={styles.resolutionPreviewImage}
+                  onPress={() => setLightboxImageUri(item.resolutionImageUrl)}
+                />
               ) : null}
               <Text style={styles.awaitingText}>Awaiting manager closure.</Text>
             </>

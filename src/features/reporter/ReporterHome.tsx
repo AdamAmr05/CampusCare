@@ -1,14 +1,15 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
-  Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -16,6 +17,7 @@ import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
+import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import type { Ticket, TicketWithHistory } from "../tickets/types";
 import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
 import {
@@ -153,16 +155,19 @@ export function ReporterHome(props: {
             </View>
           </View>
 
-          <Text style={styles.ticketMeta}>{item.location}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
+            <Text style={styles.ticketMeta}>{item.location}</Text>
+          </View>
           {item.imageUrl ? (
-            <Pressable
+            <TicketImagePreview
+              uri={item.imageUrl}
+              style={styles.ticketCardImage}
               onPress={(event) => {
                 event.stopPropagation();
                 setLightboxImageUri(item.imageUrl);
               }}
-            >
-              <Image source={{ uri: item.imageUrl }} style={styles.ticketCardImage} />
-            </Pressable>
+            />
           ) : null}
           <Text style={styles.ticketDescription}>{truncateText(item.description, 110)}</Text>
           <Text style={styles.ticketMeta}>Updated {formatTimestamp(item.updatedAt)}</Text>
@@ -258,9 +263,11 @@ export function ReporterHome(props: {
               </View>
 
               {selectedImage ? (
-                <Pressable onPress={() => setLightboxImageUri(selectedImage.uri)}>
-                  <Image source={{ uri: selectedImage.uri }} style={styles.imagePreview} />
-                </Pressable>
+                <TicketImagePreview
+                  uri={selectedImage.uri}
+                  style={styles.imagePreview}
+                  onPress={() => setLightboxImageUri(selectedImage.uri)}
+                />
               ) : null}
 
               <Pressable
@@ -293,60 +300,123 @@ export function ReporterHome(props: {
         }
       />
 
-      <Modal visible={selectedTicketId !== null} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ticket Details</Text>
-              <Pressable onPress={() => setSelectedTicketId(null)}>
-                <Text style={styles.modalClose}>Close</Text>
-              </Pressable>
-            </View>
+      <Modal
+        visible={selectedTicketId !== null}
+        animationType={Platform.OS === "ios" ? "none" : "slide"}
+        presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
+        allowSwipeDismissal={Platform.OS === "ios"}
+        onRequestClose={() => setSelectedTicketId(null)}
+      >
+        <View style={styles.detailsScreen}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Ticket Details</Text>
+            <Pressable
+              onPress={() => setSelectedTicketId(null)}
+              style={styles.modalCloseButton}
+              hitSlop={10}
+            >
+              <Text style={styles.modalCloseButtonText}>Done</Text>
+            </Pressable>
+          </View>
 
-            {selectedTicket === undefined ? (
+          {selectedTicket === undefined ? (
+            <View style={styles.detailsContent}>
               <Text style={styles.ticketMeta}>Loading...</Text>
-            ) : selectedTicket === null ? (
+            </View>
+          ) : selectedTicket === null ? (
+            <View style={styles.detailsContent}>
               <Text style={styles.ticketMeta}>Ticket not found.</Text>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.ticketTitle}>{selectedTicket.ticket.category}</Text>
-                <Text style={styles.ticketMeta}>{selectedTicket.ticket.location}</Text>
-                {selectedTicket.ticket.imageUrl ? (
-                  <Pressable onPress={() => setLightboxImageUri(selectedTicket.ticket.imageUrl)}>
-                    <Image source={{ uri: selectedTicket.ticket.imageUrl }} style={styles.modalImage} />
-                  </Pressable>
-                ) : null}
-                <Text style={styles.modalDescription}>{selectedTicket.ticket.description}</Text>
-                <Text style={styles.ticketMeta}>
-                  Current status: {getTicketStatusLabel(selectedTicket.ticket.status)}
-                </Text>
-                {selectedTicket.ticket.resolutionNote ? (
-                  <Text style={styles.modalDescription}>
-                    Resolution note: {selectedTicket.ticket.resolutionNote}
+            </View>
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.detailsContent}
+              contentInsetAdjustmentBehavior="automatic"
+              bounces={false}
+            >
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryHead}>
+                  <Text style={styles.summaryTitle}>{selectedTicket.ticket.category}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
+                    <Text style={styles.summaryLocation}>{selectedTicket.ticket.location}</Text>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    styles.summaryStatusBadge,
+                    {
+                      backgroundColor: getTicketStatusColors(selectedTicket.ticket.status).background,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusBadgeText,
+                      { color: getTicketStatusColors(selectedTicket.ticket.status).text },
+                    ]}
+                  >
+                    {getTicketStatusLabel(selectedTicket.ticket.status)}
                   </Text>
+                </View>
+                {selectedTicket.ticket.imageUrl ? (
+                  <TicketImagePreview
+                    uri={selectedTicket.ticket.imageUrl}
+                    style={styles.modalImage}
+                    onPress={() => setLightboxImageUri(selectedTicket.ticket.imageUrl)}
+                  />
+                ) : null}
+                <Text style={styles.modalDescriptionLabel}>Description</Text>
+                <Text style={styles.modalDescription}>{selectedTicket.ticket.description}</Text>
+                {selectedTicket.ticket.resolutionNote ? (
+                  <>
+                    <Text style={[styles.modalDescriptionLabel, { marginTop: 12 }]}>Resolution Note</Text>
+                    <Text style={styles.modalDescription}>
+                      {selectedTicket.ticket.resolutionNote}
+                    </Text>
+                  </>
                 ) : null}
                 {selectedTicket.ticket.resolutionImageUrl ? (
-                  <Pressable onPress={() => setLightboxImageUri(selectedTicket.ticket.resolutionImageUrl)}>
-                    <Image
-                      source={{ uri: selectedTicket.ticket.resolutionImageUrl }}
-                      style={styles.modalImage}
-                    />
-                  </Pressable>
+                  <TicketImagePreview
+                    uri={selectedTicket.ticket.resolutionImageUrl}
+                    style={styles.modalImage}
+                    onPress={() => setLightboxImageUri(selectedTicket.ticket.resolutionImageUrl)}
+                  />
                 ) : null}
+              </View>
 
-                <Text style={styles.modalSection}>Status History</Text>
-                {selectedTicket.history.map((entry) => (
-                  <View key={entry._id} style={styles.historyCard}>
-                    <Text style={styles.historyLine}>
-                      {`${entry.fromStatus ?? "none"} -> ${entry.toStatus}`}
-                    </Text>
-                    <Text style={styles.ticketMeta}>{formatTimestamp(entry.changedAt)}</Text>
-                    {entry.note ? <Text style={styles.historyNote}>{entry.note}</Text> : null}
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+              <Text style={styles.modalSection}>Status History</Text>
+              <View style={styles.timelineContainer}>
+                {selectedTicket.history.map((entry, index) => {
+                  const isLast = index === selectedTicket.history.length - 1;
+                  return (
+                    <View key={entry._id} style={styles.timelineItem}>
+                      <View style={styles.timelineLeft}>
+                        <View style={styles.timelineDot} />
+                        {!isLast ? <View style={styles.timelineLine} /> : null}
+                      </View>
+                      <View style={styles.timelineContent}>
+                        <Text style={styles.historyLine}>
+                          {`${entry.fromStatus ?? "none"} -> ${entry.toStatus}`}
+                        </Text>
+                        <Text style={styles.ticketMeta}>{formatTimestamp(entry.changedAt)}</Text>
+                        {entry.note ? (
+                          <View style={styles.historyNote}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                              <Ionicons name="chatbubble-outline" size={14} color={theme.colors.textSecondary} />
+                              <Text style={styles.historyNoteLabel}>Comment</Text>
+                            </View>
+                            <Text style={styles.historyNoteText}>{entry.note}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
         </View>
       </Modal>
       <ImageLightbox imageUri={lightboxImageUri} onClose={() => setLightboxImageUri(null)} />

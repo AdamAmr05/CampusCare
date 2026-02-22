@@ -1,12 +1,12 @@
 import React from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  SafeAreaView,
   ScrollView,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "./theme";
 import { appScreenStyles as styles } from "./AppScreen.styles";
 
