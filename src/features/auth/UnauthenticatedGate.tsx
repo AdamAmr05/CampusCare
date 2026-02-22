@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Pressable, SafeAreaView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import type { OnboardingIntent } from "../../domain/types";
-import { styles } from "../../ui/styles";
+import { AppScreen } from "../../ui/AppScreen";
 import { AuthForm } from "./AuthForm";
+import { styles } from "./UnauthenticatedGate.styles";
 
 export function UnauthenticatedGate(props: {
   onIntentSelected: (intent: OnboardingIntent) => void;
@@ -18,25 +19,24 @@ export function UnauthenticatedGate(props: {
 
   if (!showAuthForm) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.title}>CampusCare</Text>
+      <AppScreen>
+        <View style={styles.heroCard}>
+          <Text style={styles.badge}>CampusCare GIU</Text>
+          <Text style={styles.title}>Report Campus Issues Fast</Text>
           <Text style={styles.subtitle}>
-            Sign in with a verified @*.giu-uni.de account to continue.
+            Secure access with verified GIU email. Track every issue through assignment, work, and
+            manager closure.
           </Text>
 
-          <Pressable
-            onPress={() => continueWithIntent("reporter")}
-            style={[styles.button, styles.primaryButton]}
-          >
+          <Pressable onPress={() => continueWithIntent("reporter")} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>Continue as Reporter</Text>
           </Pressable>
 
-          <Pressable onPress={() => continueWithIntent("resolver")}>
-            <Text style={styles.linkText}>If you are a resolver, go here</Text>
+          <Pressable onPress={() => continueWithIntent("resolver")} style={styles.linkButton}>
+            <Text style={styles.linkText}>Resolver access request</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </AppScreen>
     );
   }
 
