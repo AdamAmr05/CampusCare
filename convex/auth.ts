@@ -166,9 +166,10 @@ export const upsertCurrentUser = mutation({
     } else if (
       args.intent === "reporter" &&
       existingUser.role !== "resolver" &&
-      existingUser.accountStatus === "resolver_rejected"
+      (existingUser.accountStatus === "resolver_rejected" ||
+        existingUser.accountStatus === "pending_resolver_approval")
     ) {
-      // Reporter path should restore reporter access after a rejected resolver request.
+      // Reporter path should restore reporter access after rejected/pending resolver state.
       nextRole = "reporter";
       nextAccountStatus = "active";
     }
