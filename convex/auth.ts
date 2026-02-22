@@ -150,6 +150,10 @@ export const upsertCurrentUser = mutation({
     if (managerAccount) {
       nextRole = "manager";
       nextAccountStatus = "active";
+    } else if (existingUser.role === "manager") {
+      // Manager role is sourced from MANAGER_EMAIL_ALLOWLIST, so revoke it when removed.
+      nextRole = "reporter";
+      nextAccountStatus = args.intent === "resolver" ? "pending_resolver_approval" : "active";
     } else if (args.intent === "resolver" && existingUser.role !== "resolver") {
       // Rejected users must explicitly trigger reapply via resolverRequests.reapply.
       if (existingUser.accountStatus === "resolver_rejected") {
