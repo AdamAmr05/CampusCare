@@ -20,7 +20,8 @@
           "cameraPermission": "CampusCare needs camera access so you can take a photo for a facility ticket.",
           "photosPermission": "CampusCare needs photo library access so you can attach an existing image to a facility ticket."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "web": {
       "bundler": "metro"

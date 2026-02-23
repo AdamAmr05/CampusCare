@@ -7,6 +7,19 @@ import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { styles } from "./AuthForm.styles";
 
+function getIncompleteSignInMessage(status: string | null | undefined): string {
+  switch (status) {
+    case "needs_first_factor":
+      return "Sign-in requires another first-factor step. Ensure this account supports password sign-in.";
+    case "needs_second_factor":
+      return "Sign-in requires a second factor (MFA), which is not yet supported in this screen.";
+    case "needs_new_password":
+      return "Sign-in requires setting a new password before access can continue.";
+    default:
+      return `Sign-in was not completed (status: ${status ?? "unknown"}).`;
+  }
+}
+
 export function AuthForm(props: {
   intent: OnboardingIntent;
   onBack: () => void;
@@ -39,12 +52,13 @@ export function AuthForm(props: {
 
     try {
       const signInAttempt = await signIn.create({
+        strategy: "password",
         identifier,
         password,
       });
 
       if (signInAttempt.status !== "complete") {
-        throw new Error("Sign-in requires additional steps. Please try again.");
+        throw new Error(getIncompleteSignInMessage(signInAttempt.status));
       }
 
       if (!signInAttempt.createdSessionId) {

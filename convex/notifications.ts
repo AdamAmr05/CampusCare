@@ -15,7 +15,7 @@ import {
   notificationTypeValidator,
   pushPlatformValidator,
 } from "./lib/validators";
-import { requireActiveUser } from "./lib/auth";
+import { requireActiveUser, requireCurrentUser } from "./lib/auth";
 
 const EXPO_PUSH_SEND_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_PUSH_CHUNK_SIZE = 100;
@@ -177,7 +177,7 @@ export const registerPushToken = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const user = await requireActiveUser(ctx);
+    const user = await requireCurrentUser(ctx);
     const expoPushToken = normalizeExpoPushToken(args.expoPushToken);
     const now = Date.now();
 
@@ -224,7 +224,7 @@ export const disablePushToken = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const user = await requireActiveUser(ctx);
+    const user = await requireCurrentUser(ctx);
     const now = Date.now();
 
     if (typeof args.expoPushToken === "string") {

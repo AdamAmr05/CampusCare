@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -25,6 +26,7 @@ export function ReporterHome(props: {
   onSignOut: () => void;
   onSwitchToResolver?: () => void;
 }): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const createTicket = useMutation(api.ticketsReporter.create);
   const generateUploadUrl = useMutation(api.ticketsReporter.generateUploadUrl);
   const deleteUnusedUpload = useMutation(api.ticketsReporter.deleteUnusedUpload);
@@ -313,7 +315,7 @@ export function ReporterHome(props: {
         renderItem={renderTicket}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={<Text style={styles.emptyText}>No tickets yet. Submit your first issue.</Text>}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
         showsVerticalScrollIndicator={false}
         ListFooterComponent={listFooter}
         removeClippedSubviews={Platform.OS === "android"}

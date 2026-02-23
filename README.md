@@ -30,9 +30,17 @@ Required variables:
 Optional notification variables:
 - `EXPO_PUSH_ENABLED` (`true` to attempt Expo push delivery from Convex actions)
 - `EXPO_PUSH_ACCESS_TOKEN` (optional bearer token for secured Expo Push API calls)
+- `EXPO_PUBLIC_EAS_PROJECT_ID` (recommended fallback for Expo push token registration)
 
 Push flow note:
-- Client should call `notifications.registerPushToken` after obtaining an Expo push token via `expo-notifications`.
+- App now auto-registers push tokens after authenticated sync using `expo-notifications`.
+- Registration entrypoint: `src/features/notifications/usePushRegistration.ts`.
+- Backend registration mutation: `notifications.registerPushToken`.
+
+Push credentials (EAS):
+- iOS (APNs): run `eas credentials -p ios` and set up a Push Key for your bundle identifier.
+- Android (FCM v1): run `eas credentials -p android` and upload your Firebase service account JSON.
+- Build and test on a physical device using a development build (`eas build --profile development`).
 
 ## Clerk setup notes
 

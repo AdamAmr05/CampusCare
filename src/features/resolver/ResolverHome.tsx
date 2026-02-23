@@ -6,6 +6,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -32,6 +33,7 @@ export function ResolverHome(props: {
   onSignOut: () => void;
   onSwitchToReporter?: () => void;
 }): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const generateUploadUrl = useMutation(api.ticketsReporter.generateUploadUrl);
   const deleteUnusedUpload = useMutation(api.ticketsReporter.deleteUnusedUpload);
   const setInProgress = useMutation(api.ticketsResolver.setInProgress);
@@ -343,7 +345,7 @@ export function ResolverHome(props: {
         data={tickets}
         keyExtractor={(item) => item._id}
         renderItem={renderTicket}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
         ListHeaderComponent={
           <View style={styles.listHeader}>
             <View style={styles.heroCard}>

@@ -48,6 +48,29 @@ describe("auth onboarding intent behavior", () => {
     );
   });
 
+  it("allows pending users to register push tokens for decision notifications", async () => {
+    const t = createHarness();
+    const requester = t.withIdentity({
+      tokenIdentifier: "resolver-push-pending-1",
+      email: "resolver.push.pending@student.giu-uni.de",
+      emailVerified: true,
+      name: "Resolver Push Pending",
+    });
+
+    const access = await requester.mutation(api.auth.upsertCurrentUser, {
+      intent: "resolver",
+    });
+    expect(access.accountStatus).toBe("pending_resolver_approval");
+
+    await requester.mutation(api.notifications.registerPushToken, {
+      expoPushToken: "ExpoPushToken[pending-user-device-token]",
+      platform: "ios",
+    });
+
+    const mine = await requester.query(api.auth.getMyAccess, {});
+    expect(mine?.accountStatus).toBe("pending_resolver_approval");
+  });
+
   it("restores reporter access when reporter intent is selected after pending resolver state", async () => {
     const t = createHarness();
     const user = t.withIdentity({

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useClerk } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { OnboardingIntent } from "../../domain/types";
+import { usePushRegistration } from "../notifications/usePushRegistration";
 import { ManagerHome } from "../manager/ManagerHome";
 import { ReporterHome } from "../reporter/ReporterHome";
 import { ResolverHome } from "../resolver/ResolverHome";
@@ -21,6 +22,7 @@ export function AuthenticatedGate(props: {
   const { signOut } = useClerk();
   const upsertCurrentUser = useMutation(api.auth.upsertCurrentUser);
   const reapplyResolverRequest = useMutation(api.resolverRequests.reapply);
+  const disablePushToken = useMutation(api.notifications.disablePushToken);
   const access = useQuery(api.auth.getMyAccess) as AccessSummary | null | undefined;
 
   const [lastSyncedIntent, setLastSyncedIntent] = useState<OnboardingIntent | null>(null);
@@ -31,6 +33,17 @@ export function AuthenticatedGate(props: {
   const [reapplying, setReapplying] = useState(false);
   const [reapplyError, setReapplyError] = useState("");
   const [syncAttempt, setSyncAttempt] = useState(0);
+
+  usePushRegistration(syncState === "ready" && access !== undefined && access !== null);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await disablePushToken({});
+    } catch {
+      // Sign-out should proceed even if token cleanup fails.
+    }
+    await signOut();
+  }, [disablePushToken, signOut]);
 
   useEffect(() => {
     if (lastSyncedIntent === props.intent) {
@@ -85,7 +98,7 @@ export function AuthenticatedGate(props: {
             >
               <Text style={styles.primaryButtonText}>Retry sync</Text>
             </Pressable>
-            <Pressable onPress={() => void signOut()} style={styles.secondaryButton}>
+            <Pressable onPress={() => void handleSignOut()} style={styles.secondaryButton}>
               <Text style={styles.secondaryButtonText}>Sign out</Text>
             </Pressable>
           </>
@@ -113,7 +126,7 @@ export function AuthenticatedGate(props: {
         title="Resolver request pending"
         message="Your resolver request is pending manager approval. Protected app features remain locked until a decision is made."
         footer={
-          <Pressable onPress={() => void signOut()} style={styles.secondaryButton}>
+          <Pressable onPress={() => void handleSignOut()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Sign out</Text>
           </Pressable>
         }
@@ -170,7 +183,7 @@ export function AuthenticatedGate(props: {
 
           {reapplyError.length > 0 ? <Text style={styles.errorText}>{reapplyError}</Text> : null}
 
-          <Pressable onPress={() => void signOut()} style={styles.secondaryButton}>
+          <Pressable onPress={() => void handleSignOut()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Sign out</Text>
           </Pressable>
         </View>
@@ -179,7 +192,7 @@ export function AuthenticatedGate(props: {
   }
 
   if (access.role === "manager") {
-    return <ManagerHome email={access.email} onSignOut={() => void signOut()} />;
+    return <ManagerHome email={access.email} onSignOut={() => void handleSignOut()} />;
   }
 
   if (access.role === "resolver") {
@@ -187,7 +200,7 @@ export function AuthenticatedGate(props: {
       return (
         <ReporterHome
           email={access.email}
-          onSignOut={() => void signOut()}
+          onSignOut={() => void handleSignOut()}
           onSwitchToResolver={() => props.onIntentChanged("resolver")}
         />
       );
@@ -195,11 +208,11 @@ export function AuthenticatedGate(props: {
     return (
       <ResolverHome
         email={access.email}
-        onSignOut={() => void signOut()}
+        onSignOut={() => void handleSignOut()}
         onSwitchToReporter={() => props.onIntentChanged("reporter")}
       />
     );
   }
 
-  return <ReporterHome email={access.email} onSignOut={() => void signOut()} />;
+  return <ReporterHome email={access.email} onSignOut={() => void handleSignOut()} />;
 }

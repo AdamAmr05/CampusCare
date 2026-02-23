@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -18,6 +19,7 @@ import { styles } from "./ManagerHome.styles";
 type ManagerTab = "resolver_requests" | "assign_tickets" | "close_tickets";
 
 export function ManagerHome(props: { email: string; onSignOut: () => void }): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const approveRequest = useMutation(api.resolverRequests.approve);
   const rejectRequest = useMutation(api.resolverRequests.reject);
   const assignResolver = useMutation(api.ticketsManager.assignResolver);
@@ -499,7 +501,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           data={pendingRequests}
           keyExtractor={(item) => item._id}
           renderItem={renderResolverRequest}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
@@ -511,7 +513,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           data={openTickets}
           keyExtractor={(item) => item._id}
           renderItem={renderOpenTicket}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
@@ -523,7 +525,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           data={resolvedTickets}
           keyExtractor={(item) => item._id}
           renderItem={renderResolvedTicket}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
