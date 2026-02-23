@@ -10,6 +10,7 @@ import {
   getExpoPushAccessTokenOrNull,
   isExpoPushEnabled,
 } from "./lib/env";
+import { createNotificationForUser } from "./lib/notifications";
 import {
   notificationPushStatusValidator,
   notificationTypeValidator,
@@ -167,6 +168,30 @@ export const markAllRead = mutation({
     );
 
     return unreadNotifications.length;
+  },
+});
+
+export const sendTestToMe = mutation({
+  args: {},
+  returns: v.object({
+    notificationId: v.id("notifications"),
+  }),
+  handler: async (ctx) => {
+    const user = await requireActiveUser(ctx);
+    const now = Date.now();
+
+    const notificationId = await createNotificationForUser(ctx, {
+      recipientUserId: user._id,
+      actorUserId: user._id,
+      type: "ticket_in_progress",
+      title: "Notification test",
+      body: "CampusCare notification test from your current session.",
+      ticketId: null,
+      resolverRequestId: null,
+      dedupeKey: `notification_test:${user._id}:${now}`,
+    });
+
+    return { notificationId };
   },
 });
 

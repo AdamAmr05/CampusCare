@@ -4,8 +4,9 @@ import { theme } from "../../ui/theme";
 export const styles = StyleSheet.create({
   triggerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: theme.spacing.sm,
     marginTop: theme.spacing.md,
   },
@@ -38,6 +39,21 @@ export const styles = StyleSheet.create({
   markAllText: {
     color: theme.colors.textSecondary,
     fontWeight: "700",
+    fontSize: 12,
+  },
+  testButton: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.yellowDeep,
+    backgroundColor: "#fff3bf",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    minHeight: 42,
+    justifyContent: "center",
+  },
+  testButtonText: {
+    color: theme.colors.yellowDeep,
+    fontWeight: "800",
     fontSize: 12,
   },
   modalBackdrop: {

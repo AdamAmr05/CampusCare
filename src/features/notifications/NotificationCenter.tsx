@@ -11,8 +11,10 @@ export function NotificationCenter(): React.JSX.Element {
   const [visible, setVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
+  const sendTestToMe = useMutation(api.notifications.sendTestToMe);
   const unreadCount = useQuery(api.notifications.getUnreadCount, {}) as
     | number
     | undefined;
@@ -49,6 +51,19 @@ export function NotificationCenter(): React.JSX.Element {
       setIsMarkingAllRead(false);
     }
   }, [markAllRead, unreadCount]);
+
+  const onSendTestNotification = useCallback(async () => {
+    setIsSendingTest(true);
+    setErrorMessage("");
+    try {
+      await sendTestToMe({});
+      setVisible(true);
+    } catch (error) {
+      setErrorMessage(formatError(error));
+    } finally {
+      setIsSendingTest(false);
+    }
+  }, [sendTestToMe]);
 
   const onOpenNotification = useCallback(
     async (notification: AppNotification) => {
@@ -105,6 +120,17 @@ export function NotificationCenter(): React.JSX.Element {
             {isMarkingAllRead ? "Marking..." : "Mark all read"}
           </Text>
         </Pressable>
+        {__DEV__ ? (
+          <Pressable
+            onPress={() => void onSendTestNotification()}
+            disabled={isSendingTest}
+            style={styles.testButton}
+          >
+            <Text style={styles.testButtonText}>
+              {isSendingTest ? "Sending..." : "Send test"}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <Modal

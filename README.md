@@ -108,5 +108,6 @@ npx vitest run tests/tickets.backend.test.ts
 - `notifications.getUnreadCount`
 - `notifications.markRead`
 - `notifications.markAllRead`
+- `notifications.sendTestToMe`
 - `notifications.registerPushToken`
 - `notifications.disablePushToken`

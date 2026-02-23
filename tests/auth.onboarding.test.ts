@@ -71,6 +71,26 @@ describe("auth onboarding intent behavior", () => {
     expect(mine?.accountStatus).toBe("pending_resolver_approval");
   });
 
+  it("can create a self-test notification for active users", async () => {
+    const t = createHarness();
+    const reporter = t.withIdentity({
+      tokenIdentifier: "reporter-notify-test-1",
+      email: "reporter.notify.test@student.giu-uni.de",
+      emailVerified: true,
+      name: "Reporter Notify Test",
+    });
+
+    await reporter.mutation(api.auth.upsertCurrentUser, { intent: "reporter" });
+    const response = await reporter.mutation(api.notifications.sendTestToMe, {});
+
+    const notifications = await reporter.query(api.notifications.listMine, {
+      paginationOpts: { cursor: null, numItems: 10 },
+    });
+
+    expect(notifications.page.some((item) => item._id === response.notificationId)).toBe(true);
+    expect(notifications.page.some((item) => item.title === "Notification test")).toBe(true);
+  });
+
   it("restores reporter access when reporter intent is selected after pending resolver state", async () => {
     const t = createHarness();
     const user = t.withIdentity({

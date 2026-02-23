@@ -25,6 +25,12 @@
     ],
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f19bdbab-ea36-4c32-96a8-91ca5b34f5c6"
+      }
+    },
+    "owner": "adam-amr"
   }
 }
