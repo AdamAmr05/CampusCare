@@ -74,6 +74,14 @@ export function usePushRegistration(enabled: boolean): void {
     configureForegroundNotificationHandler();
 
     let cancelled = false;
+    const projectId = getExpoProjectId();
+
+    if (!projectId) {
+      console.warn(
+        "Missing EAS projectId. Configure expo.extra.eas.projectId or EXPO_PUBLIC_EAS_PROJECT_ID.",
+      );
+      return;
+    }
 
     const registerToken = async (expoPushToken: string) => {
       if (cancelled) {
@@ -87,6 +95,22 @@ export function usePushRegistration(enabled: boolean): void {
         });
       } catch (error) {
         console.warn("Failed to register Expo push token:", formatError(error));
+      }
+    };
+
+    const registerDeviceToken = async (devicePushToken: Notifications.DevicePushToken) => {
+      if (cancelled) {
+        return;
+      }
+
+      try {
+        const expoPushToken = await Notifications.getExpoPushTokenAsync({
+          projectId,
+          devicePushToken,
+        });
+        await registerToken(expoPushToken.data);
+      } catch (error) {
+        console.warn("Failed to refresh Expo push token from device token:", formatError(error));
       }
     };
 
@@ -113,14 +137,6 @@ export function usePushRegistration(enabled: boolean): void {
           return;
         }
 
-        const projectId = getExpoProjectId();
-        if (!projectId) {
-          console.warn(
-            "Missing EAS projectId. Configure expo.extra.eas.projectId or EXPO_PUBLIC_EAS_PROJECT_ID.",
-          );
-          return;
-        }
-
         const tokenResponse = await Notifications.getExpoPushTokenAsync({
           projectId,
         });
@@ -132,8 +148,8 @@ export function usePushRegistration(enabled: boolean): void {
 
     void run();
 
-    const tokenSubscription = Notifications.addPushTokenListener((token) => {
-      void registerToken(token.data);
+    const tokenSubscription = Notifications.addPushTokenListener((deviceToken) => {
+      void registerDeviceToken(deviceToken);
     });
 
     return () => {
