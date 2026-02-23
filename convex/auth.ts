@@ -16,6 +16,11 @@ import {
   requireIdentity,
   requireVerifiedGiuEmail,
 } from "./lib/auth";
+import {
+  createNotificationForUser,
+  listActiveManagerUserIds,
+  truncateNotificationText,
+} from "./lib/notifications";
 
 type ReaderCtx = QueryCtx | MutationCtx;
 
@@ -53,13 +58,13 @@ async function ensurePendingResolverRequest(
     requesterName: string;
     reason: string | null;
   },
-): Promise<void> {
+): Promise<Id<"resolver_requests"> | null> {
   const latestRequest = await getLatestResolverRequestForUser(ctx, args.requesterUserId);
   if (latestRequest?.status === "pending") {
-    return;
+    return null;
   }
 
-  await ctx.db.insert("resolver_requests", {
+  const requestId = await ctx.db.insert("resolver_requests", {
     requesterUserId: args.requesterUserId,
     requesterEmail: args.requesterEmail,
     requesterName: args.requesterName,
@@ -70,6 +75,27 @@ async function ensurePendingResolverRequest(
     decidedByUserId: null,
     decisionNote: null,
   });
+
+  const managerUserIds = await listActiveManagerUserIds(ctx);
+  await Promise.all(
+    managerUserIds.map((managerUserId) =>
+      createNotificationForUser(ctx, {
+        recipientUserId: managerUserId,
+        actorUserId: args.requesterUserId,
+        type: "resolver_request_submitted",
+        title: "New resolver access request",
+        body: truncateNotificationText(
+          `${args.requesterName} (${args.requesterEmail}) requested resolver access.`,
+          220,
+        ),
+        ticketId: null,
+        resolverRequestId: requestId,
+        dedupeKey: `resolver_request:${requestId}:submitted:recipient:${managerUserId}`,
+      }),
+    ),
+  );
+
+  return requestId;
 }
 
 async function buildAccessSummary(ctx: ReaderCtx, userId: Id<"users">) {

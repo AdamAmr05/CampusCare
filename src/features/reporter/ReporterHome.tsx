@@ -9,6 +9,7 @@ import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import type { Ticket } from "../tickets/types";
+import { NotificationCenter } from "../notifications/NotificationCenter";
 import {
   selectTicketImage,
   type TicketImageAsset,
@@ -194,6 +195,8 @@ export function ReporterHome(props: {
             </View>
           </View>
         </View>
+
+        <NotificationCenter />
 
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>New Ticket</Text>

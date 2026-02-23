@@ -11,6 +11,11 @@ import {
   toTicketWithImageUrl,
 } from "./lib/tickets";
 import {
+  createNotificationForUser,
+  listActiveManagerUserIds,
+  truncateNotificationText,
+} from "./lib/notifications";
+import {
   ticketWithImageUrlValidator,
   ticketWithHistoryValidator,
 } from "./lib/ticketValidators";
@@ -66,6 +71,24 @@ export const create = mutation({
       toStatus: "open",
       note: null,
     });
+
+    const managerUserIds = await listActiveManagerUserIds(ctx);
+    const previewDescription = truncateNotificationText(description, 120);
+
+    await Promise.all(
+      managerUserIds.map((managerUserId) =>
+        createNotificationForUser(ctx, {
+          recipientUserId: managerUserId,
+          actorUserId: reporter._id,
+          type: "ticket_created",
+          title: `New ticket: ${category}`,
+          body: `${location} • ${previewDescription}`,
+          ticketId,
+          resolverRequestId: null,
+          dedupeKey: `ticket:${ticketId}:created:recipient:${managerUserId}`,
+        }),
+      ),
+    );
 
     return { ticketId };
   },

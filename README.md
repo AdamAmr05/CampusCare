@@ -27,6 +27,13 @@ Required variables:
 - `CLERK_JWT_ISSUER_DOMAIN`
 - `MANAGER_EMAIL_ALLOWLIST` (comma-separated lowercase emails)
 
+Optional notification variables:
+- `EXPO_PUSH_ENABLED` (`true` to attempt Expo push delivery from Convex actions)
+- `EXPO_PUSH_ACCESS_TOKEN` (optional bearer token for secured Expo Push API calls)
+
+Push flow note:
+- Client should call `notifications.registerPushToken` after obtaining an Expo push token via `expo-notifications`.
+
 ## Clerk setup notes
 
 1. In Clerk Dashboard, create a JWT template using the Convex preset.
@@ -89,3 +96,9 @@ npx vitest run tests/tickets.backend.test.ts
 - `ticketsResolver.setInProgress`
 - `ticketsResolver.markResolved`
 - `ticketsShared.getById`
+- `notifications.listMine`
+- `notifications.getUnreadCount`
+- `notifications.markRead`
+- `notifications.markAllRead`
+- `notifications.registerPushToken`
+- `notifications.disablePushToken`

@@ -11,6 +11,11 @@ import {
   TICKET_NOTE_MAX_LENGTH,
   toTicketWithImageUrl,
 } from "./lib/tickets";
+import {
+  createNotificationForUser,
+  listActiveManagerUserIds,
+  truncateNotificationText,
+} from "./lib/notifications";
 import { ticketWithImageUrlValidator } from "./lib/ticketValidators";
 
 export const listAssignedToMe = query({
@@ -84,6 +89,20 @@ export const setInProgress = mutation({
       note,
     });
 
+    await createNotificationForUser(ctx, {
+      recipientUserId: ticket.reporterUserId,
+      actorUserId: resolver._id,
+      type: "ticket_in_progress",
+      title: "Work started on your ticket",
+      body: truncateNotificationText(
+        `${ticket.category} at ${ticket.location} is now in progress.`,
+        220,
+      ),
+      ticketId: ticket._id,
+      resolverRequestId: null,
+      dedupeKey: `ticket:${ticket._id}:in_progress:recipient:${ticket.reporterUserId}`,
+    });
+
     return null;
   },
 });
@@ -153,6 +172,42 @@ export const markResolved = mutation({
       toStatus: "resolved",
       note: resolutionNote,
     });
+
+    const reporterBody = truncateNotificationText(
+      `${ticket.category} at ${ticket.location} is resolved and awaiting manager closure.`,
+      220,
+    );
+    const managerBody = truncateNotificationText(
+      `${ticket.category} at ${ticket.location} is resolved and ready for closure review.`,
+      220,
+    );
+
+    await createNotificationForUser(ctx, {
+      recipientUserId: ticket.reporterUserId,
+      actorUserId: resolver._id,
+      type: "ticket_resolved",
+      title: "Ticket marked resolved",
+      body: reporterBody,
+      ticketId: ticket._id,
+      resolverRequestId: null,
+      dedupeKey: `ticket:${ticket._id}:resolved:recipient:${ticket.reporterUserId}`,
+    });
+
+    const managerUserIds = await listActiveManagerUserIds(ctx);
+    await Promise.all(
+      managerUserIds.map((managerUserId) =>
+        createNotificationForUser(ctx, {
+          recipientUserId: managerUserId,
+          actorUserId: resolver._id,
+          type: "ticket_resolved",
+          title: "Ticket awaiting closure",
+          body: managerBody,
+          ticketId: ticket._id,
+          resolverRequestId: null,
+          dedupeKey: `ticket:${ticket._id}:resolved:recipient:${managerUserId}`,
+        }),
+      ),
+    );
 
     return null;
   },

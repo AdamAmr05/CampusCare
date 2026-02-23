@@ -9,6 +9,10 @@ import {
   TICKET_NOTE_MAX_LENGTH,
   toTicketWithImageUrl,
 } from "./lib/tickets";
+import {
+  createNotificationForUser,
+  truncateNotificationText,
+} from "./lib/notifications";
 import { ticketWithImageUrlValidator } from "./lib/ticketValidators";
 
 const resolverOptionValidator = v.object({
@@ -113,6 +117,39 @@ export const assignResolver = mutation({
       note,
     });
 
+    const sharedBody = `${ticket.category} • ${ticket.location}`;
+    const resolverBody = truncateNotificationText(
+      `${sharedBody}. Assigned by ${manager.fullName}.`,
+      220,
+    );
+    const reporterBody = truncateNotificationText(
+      `${sharedBody}. Assigned to ${resolver.fullName}.`,
+      220,
+    );
+
+    await Promise.all([
+      createNotificationForUser(ctx, {
+        recipientUserId: resolver._id,
+        actorUserId: manager._id,
+        type: "ticket_assigned",
+        title: "New ticket assigned",
+        body: resolverBody,
+        ticketId: ticket._id,
+        resolverRequestId: null,
+        dedupeKey: `ticket:${ticket._id}:assigned:recipient:${resolver._id}`,
+      }),
+      createNotificationForUser(ctx, {
+        recipientUserId: ticket.reporterUserId,
+        actorUserId: manager._id,
+        type: "ticket_assigned",
+        title: "Ticket assigned",
+        body: reporterBody,
+        ticketId: ticket._id,
+        resolverRequestId: null,
+        dedupeKey: `ticket:${ticket._id}:assigned:recipient:${ticket.reporterUserId}`,
+      }),
+    ]);
+
     return null;
   },
 });
@@ -185,6 +222,39 @@ export const close = mutation({
       toStatus: "closed",
       note,
     });
+
+    const reporterBody = truncateNotificationText(
+      `${ticket.category} at ${ticket.location} has been closed by management.`,
+      220,
+    );
+
+    await createNotificationForUser(ctx, {
+      recipientUserId: ticket.reporterUserId,
+      actorUserId: manager._id,
+      type: "ticket_closed",
+      title: "Ticket closed",
+      body: reporterBody,
+      ticketId: ticket._id,
+      resolverRequestId: null,
+      dedupeKey: `ticket:${ticket._id}:closed:recipient:${ticket.reporterUserId}`,
+    });
+
+    if (ticket.resolverUserId !== null) {
+      const resolverBody = truncateNotificationText(
+        `${ticket.category} at ${ticket.location} was closed after review.`,
+        220,
+      );
+      await createNotificationForUser(ctx, {
+        recipientUserId: ticket.resolverUserId,
+        actorUserId: manager._id,
+        type: "ticket_closed",
+        title: "Resolved ticket closed",
+        body: resolverBody,
+        ticketId: ticket._id,
+        resolverRequestId: null,
+        dedupeKey: `ticket:${ticket._id}:closed:recipient:${ticket.resolverUserId}`,
+      });
+    }
 
     return null;
   },

@@ -9,6 +9,7 @@ import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import type { ResolverOption, Ticket } from "../tickets/types";
 import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
+import { NotificationCenter } from "../notifications/NotificationCenter";
 import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
@@ -413,6 +414,8 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           </Pressable>
         </View>
       </View>
+
+      <NotificationCenter />
 
       <View style={styles.tabsRow}>
         <Pressable

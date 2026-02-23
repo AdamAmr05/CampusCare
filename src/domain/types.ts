@@ -14,6 +14,18 @@ export type TicketStatus =
   | "resolved"
   | "closed";
 
+export type NotificationType =
+  | "ticket_created"
+  | "ticket_assigned"
+  | "ticket_in_progress"
+  | "ticket_resolved"
+  | "ticket_closed"
+  | "resolver_request_submitted"
+  | "resolver_request_approved"
+  | "resolver_request_rejected";
+
+export type NotificationPushStatus = "pending" | "sent" | "failed" | "skipped";
+
 export type OnboardingIntent = "reporter" | "resolver";
 
 export const TICKET_STATUSES: ReadonlyArray<TicketStatus> = [

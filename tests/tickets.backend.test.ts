@@ -121,6 +121,12 @@ async function createTicketAsReporter(
   return response.ticketId;
 }
 
+async function listNotificationsForUser(user: IdentityClient) {
+  return await user.query(api.notifications.listMine, {
+    paginationOpts: { cursor: null, numItems: 50 },
+  });
+}
+
 describe("ticket lifecycle and access control", () => {
   it("supports create -> assign -> in_progress -> resolved -> closed with append-only history", async () => {
     const t = createHarness();
@@ -177,6 +183,25 @@ describe("ticket lifecycle and access control", () => {
       { from: "in_progress", to: "resolved" },
       { from: "resolved", to: "closed" },
     ]);
+
+    const reporterNotifications = await listNotificationsForUser(reporter);
+    const managerNotifications = await listNotificationsForUser(manager);
+    const resolverNotifications = await listNotificationsForUser(resolver);
+
+    expect(reporterNotifications.page.map((item) => item.type)).toEqual(
+      expect.arrayContaining([
+        "ticket_assigned",
+        "ticket_in_progress",
+        "ticket_resolved",
+        "ticket_closed",
+      ]),
+    );
+    expect(managerNotifications.page.map((item) => item.type)).toEqual(
+      expect.arrayContaining(["ticket_created", "ticket_resolved"]),
+    );
+    expect(resolverNotifications.page.map((item) => item.type)).toEqual(
+      expect.arrayContaining(["ticket_assigned", "ticket_closed"]),
+    );
   });
 
   it("blocks manager close before resolver marks resolved", async () => {

@@ -14,7 +14,40 @@ function createHarness() {
   return convexTest(schema, convexModules);
 }
 
+type TestHarness = ReturnType<typeof createHarness>;
+type IdentityClient = ReturnType<TestHarness["withIdentity"]>;
+
+async function listNotificationsForUser(user: IdentityClient) {
+  return await user.query(api.notifications.listMine, {
+    paginationOpts: { cursor: null, numItems: 30 },
+  });
+}
+
 describe("auth onboarding intent behavior", () => {
+  it("notifies managers when resolver access is requested during onboarding", async () => {
+    const t = createHarness();
+    const manager = t.withIdentity({
+      tokenIdentifier: "manager-notify-1",
+      email: "manager@giu-uni.de",
+      emailVerified: true,
+      name: "Manager Notify",
+    });
+    await manager.mutation(api.auth.upsertCurrentUser, { intent: "reporter" });
+
+    const requester = t.withIdentity({
+      tokenIdentifier: "resolver-notify-1",
+      email: "resolver.notify@student.giu-uni.de",
+      emailVerified: true,
+      name: "Resolver Notify",
+    });
+    await requester.mutation(api.auth.upsertCurrentUser, { intent: "resolver" });
+
+    const managerNotifications = await listNotificationsForUser(manager);
+    expect(managerNotifications.page.map((item) => item.type)).toEqual(
+      expect.arrayContaining(["resolver_request_submitted"]),
+    );
+  });
+
   it("restores reporter access when reporter intent is selected after pending resolver state", async () => {
     const t = createHarness();
     const user = t.withIdentity({
@@ -106,6 +139,11 @@ describe("auth onboarding intent behavior", () => {
     await manager.mutation(api.resolverRequests.approve, {
       requestId: pendingRequest!._id,
     });
+
+    const resolverNotifications = await listNotificationsForUser(resolverUser);
+    expect(resolverNotifications.page.map((item) => item.type)).toEqual(
+      expect.arrayContaining(["resolver_request_approved"]),
+    );
 
     const resolverAccessAfterApproval = await resolverUser.mutation(api.auth.upsertCurrentUser, {
       intent: "resolver",

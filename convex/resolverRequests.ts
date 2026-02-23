@@ -11,6 +11,11 @@ import {
   requireVerifiedGiuEmail,
 } from "./lib/auth";
 import { resolverRequestStatusValidator } from "./lib/validators";
+import {
+  createNotificationForUser,
+  listActiveManagerUserIds,
+  truncateNotificationText,
+} from "./lib/notifications";
 
 type ReaderCtx = QueryCtx | MutationCtx;
 
@@ -99,6 +104,25 @@ export const create = mutation({
       updatedAt: Date.now(),
     });
 
+    const managerUserIds = await listActiveManagerUserIds(ctx);
+    await Promise.all(
+      managerUserIds.map((managerUserId) =>
+        createNotificationForUser(ctx, {
+          recipientUserId: managerUserId,
+          actorUserId: user._id,
+          type: "resolver_request_submitted",
+          title: "New resolver access request",
+          body: truncateNotificationText(
+            `${getDisplayName(identity, email)} (${email}) requested resolver access.`,
+            220,
+          ),
+          ticketId: null,
+          resolverRequestId: requestId,
+          dedupeKey: `resolver_request:${requestId}:submitted:recipient:${managerUserId}`,
+        }),
+      ),
+    );
+
     return {
       requestId,
       status: "pending" as const,
@@ -160,6 +184,25 @@ export const reapply = mutation({
       updatedAt: Date.now(),
     });
 
+    const managerUserIds = await listActiveManagerUserIds(ctx);
+    await Promise.all(
+      managerUserIds.map((managerUserId) =>
+        createNotificationForUser(ctx, {
+          recipientUserId: managerUserId,
+          actorUserId: user._id,
+          type: "resolver_request_submitted",
+          title: "Resolver request reapplied",
+          body: truncateNotificationText(
+            `${getDisplayName(identity, email)} (${email}) reapplied for resolver access.`,
+            220,
+          ),
+          ticketId: null,
+          resolverRequestId: requestId,
+          dedupeKey: `resolver_request:${requestId}:submitted:recipient:${managerUserId}`,
+        }),
+      ),
+    );
+
     return {
       requestId,
       status: "pending" as const,
@@ -217,6 +260,17 @@ export const approve = mutation({
       updatedAt: now,
     });
 
+    await createNotificationForUser(ctx, {
+      recipientUserId: requester._id,
+      actorUserId: manager._id,
+      type: "resolver_request_approved",
+      title: "Resolver access approved",
+      body: "Your resolver request was approved. You can now access resolver workflows.",
+      ticketId: null,
+      resolverRequestId: request._id,
+      dedupeKey: `resolver_request:${request._id}:approved:recipient:${requester._id}`,
+    });
+
     return null;
   },
 });
@@ -258,6 +312,17 @@ export const reject = mutation({
       role: "reporter",
       accountStatus: "resolver_rejected",
       updatedAt: now,
+    });
+
+    await createNotificationForUser(ctx, {
+      recipientUserId: requester._id,
+      actorUserId: manager._id,
+      type: "resolver_request_rejected",
+      title: "Resolver access rejected",
+      body: truncateNotificationText(`Manager note: ${decisionNote}`, 220),
+      ticketId: null,
+      resolverRequestId: request._id,
+      dedupeKey: `resolver_request:${request._id}:rejected:recipient:${requester._id}`,
     });
 
     return null;

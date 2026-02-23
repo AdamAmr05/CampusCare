@@ -17,6 +17,7 @@ import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
 import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
+import { NotificationCenter } from "../notifications/NotificationCenter";
 import {
   selectTicketImage,
   type TicketImageAsset,
@@ -367,6 +368,7 @@ export function ResolverHome(props: {
                 </View>
               </View>
             </View>
+            <NotificationCenter />
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           </View>
         }
