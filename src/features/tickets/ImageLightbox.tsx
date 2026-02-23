@@ -1,6 +1,7 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export function ImageLightbox(props: {
@@ -21,7 +22,14 @@ export function ImageLightbox(props: {
       <View style={styles.backdrop}>
         <Pressable style={styles.dismissArea} onPress={props.onClose} />
         <View style={styles.content} pointerEvents="box-none">
-          {props.imageUri ? <Image source={{ uri: props.imageUri }} style={styles.image} resizeMode="contain" /> : null}
+          {props.imageUri ? (
+            <ExpoImage
+              source={{ uri: props.imageUri }}
+              style={styles.image}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+            />
+          ) : null}
         </View>
         <Pressable
           style={[styles.closeButton, { top: insets.top + 10 }]}

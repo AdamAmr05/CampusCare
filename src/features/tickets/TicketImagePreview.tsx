@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image as ExpoImage } from "expo-image";
 import React from "react";
 import {
-  Image,
   Pressable,
   StyleSheet,
   View,
@@ -24,7 +24,13 @@ export function TicketImagePreview(props: {
       accessibilityRole="button"
       accessibilityLabel={props.accessibilityLabel ?? "Open image full screen"}
     >
-      <Image source={{ uri: props.uri }} style={styles.image} />
+      <ExpoImage
+        source={{ uri: props.uri }}
+        style={styles.image}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={120}
+      />
       <View style={styles.expandBadge} pointerEvents="none">
         <Ionicons name="expand-outline" size={16} color="#ffffff" />
       </View>
