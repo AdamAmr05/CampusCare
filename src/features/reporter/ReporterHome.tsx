@@ -1,9 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  filterRoomOptions,
+  roomDirectory,
+  type RoomOption,
+} from "../../domain/reference/rooms/rooms";
 import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
@@ -40,8 +45,12 @@ export function ReporterHome(props: {
   const tickets = useMemo(() => results as Ticket[], [results]);
 
   const [category, setCategory] = useState("");
-  const [location, setLocation] = useState("");
+  const [selectedRoomCode, setSelectedRoomCode] = useState("");
   const [description, setDescription] = useState("");
+  const [isRoomSelectorVisible, setIsRoomSelectorVisible] = useState(false);
+  const [roomSearchQuery, setRoomSearchQuery] = useState("");
+  const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null);
+  const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<TicketImageAsset | null>(null);
   const [imageSelectionSource, setImageSelectionSource] = useState<TicketImageSource | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -53,6 +62,24 @@ export function ReporterHome(props: {
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   const imageSelectionDisabled = imageSelectionSource !== null || submitting;
+  const roomByCode = useMemo(
+    () => new Map(roomDirectory.rooms.map((room) => [room.code, room])),
+    [],
+  );
+  const selectedRoom = selectedRoomCode ? roomByCode.get(selectedRoomCode) ?? null : null;
+  const availableFloors = useMemo(
+    () => (selectedBuilding ? roomDirectory.floorsByBuilding[selectedBuilding] ?? [] : []),
+    [selectedBuilding],
+  );
+  const filteredRoomOptions = useMemo(
+    () =>
+      filterRoomOptions(roomDirectory.rooms, {
+        building: selectedBuilding,
+        floor: selectedFloor,
+        query: roomSearchQuery,
+      }),
+    [roomSearchQuery, selectedBuilding, selectedFloor],
+  );
 
   const openTicketDetails = useCallback((ticket: Ticket) => {
     setSelectedTicketId(ticket._id);
@@ -72,6 +99,41 @@ export function ReporterHome(props: {
     setLightboxImageUri(null);
   }, []);
 
+  const resetRoomSelectorFilters = useCallback(() => {
+    setRoomSearchQuery("");
+    setSelectedBuilding(null);
+    setSelectedFloor(null);
+  }, []);
+
+  const openRoomSelector = useCallback(() => {
+    setIsRoomSelectorVisible(true);
+  }, []);
+
+  const closeRoomSelector = useCallback(() => {
+    setIsRoomSelectorVisible(false);
+    resetRoomSelectorFilters();
+  }, [resetRoomSelectorFilters]);
+
+  const selectBuilding = useCallback((building: string | null) => {
+    setSelectedBuilding(building);
+    setSelectedFloor(null);
+  }, []);
+
+  const selectFloor = useCallback((floor: string | null) => {
+    setSelectedFloor(floor);
+  }, []);
+
+  const handleSelectRoom = useCallback((room: RoomOption) => {
+    setSelectedRoomCode(room.code);
+    setErrorMessage("");
+    setIsRoomSelectorVisible(false);
+    resetRoomSelectorFilters();
+  }, [resetRoomSelectorFilters]);
+
+  const clearRoomSelection = useCallback(() => {
+    setSelectedRoomCode("");
+  }, []);
+
   useEffect(() => {
     if (isDetailsVisible) {
       return;
@@ -84,6 +146,16 @@ export function ReporterHome(props: {
 
     return () => clearTimeout(timeoutId);
   }, [isDetailsVisible]);
+
+  useEffect(() => {
+    if (!selectedFloor) {
+      return;
+    }
+
+    if (!availableFloors.includes(selectedFloor)) {
+      setSelectedFloor(null);
+    }
+  }, [availableFloors, selectedFloor]);
 
   const onSelectImageSource = useCallback(async (source: TicketImageSource) => {
     setErrorMessage("");
@@ -106,7 +178,7 @@ export function ReporterHome(props: {
 
   const submitTicket = useCallback(async () => {
     const normalizedCategory = category.trim();
-    const normalizedLocation = location.trim();
+    const normalizedLocation = selectedRoomCode.trim();
     const normalizedDescription = description.trim();
 
     if (!normalizedCategory || !normalizedLocation || !normalizedDescription) {
@@ -138,7 +210,7 @@ export function ReporterHome(props: {
       });
 
       setCategory("");
-      setLocation("");
+      setSelectedRoomCode("");
       setDescription("");
       setSelectedImage(null);
     } catch (error) {
@@ -159,7 +231,7 @@ export function ReporterHome(props: {
     description,
     deleteUnusedUpload,
     generateUploadUrl,
-    location,
+    selectedRoomCode,
     selectedImage,
   ]);
 
@@ -209,13 +281,28 @@ export function ReporterHome(props: {
             placeholder="Category (e.g. Electrical)"
             placeholderTextColor={theme.colors.textMuted}
           />
-          <TextInput
-            value={location}
-            onChangeText={setLocation}
-            style={styles.input}
-            placeholder="Location (e.g. Building B - Floor 2)"
-            placeholderTextColor={theme.colors.textMuted}
-          />
+          <Pressable onPress={openRoomSelector} style={styles.selectorInput}>
+            <View style={styles.selectorInputRow}>
+              <Text
+                style={selectedRoom ? styles.selectorValueText : styles.selectorPlaceholderText}
+                numberOfLines={1}
+              >
+                {selectedRoom ? selectedRoom.code : "Select room (building -> floor -> room)"}
+              </Text>
+              <Text style={styles.selectorActionText}>Open</Text>
+            </View>
+          </Pressable>
+          {selectedRoom ? (
+            <View style={styles.selectedRoomMetaRow}>
+              <Text style={styles.selectedRoomMetaText}>
+                Building {selectedRoom.building}
+                {selectedRoom.floor ? ` • Floor ${selectedRoom.floor}` : ""}
+              </Text>
+              <Pressable onPress={clearRoomSelection} hitSlop={6}>
+                <Text style={styles.clearRoomText}>Clear</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <TextInput
             value={description}
             onChangeText={setDescription}
@@ -278,17 +365,19 @@ export function ReporterHome(props: {
     ),
     [
       category,
+      clearRoomSelection,
       description,
       errorMessage,
       imageSelectionDisabled,
       imageSelectionSource,
-      location,
       onSelectImageSource,
       openLightbox,
+      openRoomSelector,
       props.email,
       props.onSignOut,
       props.onSwitchToResolver,
       selectedImage,
+      selectedRoom,
       submitTicket,
       submitting,
     ],
@@ -305,6 +394,139 @@ export function ReporterHome(props: {
       </View>
     ),
     [loadMore, status],
+  );
+
+  const isAndroid = Platform.OS === "android";
+  const roomSelectorSheet = (
+    <View style={styles.roomSelectorScreen}>
+      <View style={styles.roomSelectorHeader}>
+        <Text style={styles.modalTitle}>Select Room</Text>
+        <Pressable onPress={closeRoomSelector} style={styles.modalCloseButton}>
+          <Text style={styles.modalCloseButtonText}>Close</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.roomSelectorContent}>
+        <TextInput
+          value={roomSearchQuery}
+          onChangeText={setRoomSearchQuery}
+          style={styles.input}
+          placeholder="Search room code (e.g. S2.015)"
+          placeholderTextColor={theme.colors.textMuted}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
+
+        <Text style={styles.filterLabel}>Building</Text>
+        <View style={styles.chipGrid}>
+          <Pressable
+            onPress={() => selectBuilding(null)}
+            style={[styles.filterChip, selectedBuilding === null ? styles.filterChipActive : null]}
+          >
+            <Text
+              maxFontSizeMultiplier={1.2}
+              style={[
+                styles.filterChipText,
+                selectedBuilding === null ? styles.filterChipTextActive : null,
+              ]}
+            >
+              All
+            </Text>
+          </Pressable>
+          {roomDirectory.buildings.map((building) => (
+            <Pressable
+              key={building}
+              onPress={() => selectBuilding(building)}
+              style={[styles.filterChip, selectedBuilding === building ? styles.filterChipActive : null]}
+            >
+              <Text
+                maxFontSizeMultiplier={1.2}
+                style={[
+                  styles.filterChipText,
+                  selectedBuilding === building ? styles.filterChipTextActive : null,
+                ]}
+              >
+                {building}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {selectedBuilding ? (
+          <>
+            <Text style={styles.filterLabel}>Floor (optional)</Text>
+            <View style={styles.chipGrid}>
+              <Pressable
+                onPress={() => selectFloor(null)}
+                style={[
+                  styles.filterChip,
+                  styles.filterChipWide,
+                  selectedFloor === null ? styles.filterChipActive : null,
+                ]}
+              >
+                <Text
+                  maxFontSizeMultiplier={1.2}
+                  style={[
+                    styles.filterChipText,
+                    selectedFloor === null ? styles.filterChipTextActive : null,
+                  ]}
+                >
+                  All Floors
+                </Text>
+              </Pressable>
+              {availableFloors.map((floor) => (
+                <Pressable
+                  key={floor}
+                  onPress={() => selectFloor(floor)}
+                  style={[styles.filterChip, selectedFloor === floor ? styles.filterChipActive : null]}
+                >
+                  <Text
+                    maxFontSizeMultiplier={1.2}
+                    style={[
+                      styles.filterChipText,
+                      selectedFloor === floor ? styles.filterChipTextActive : null,
+                    ]}
+                  >
+                    Floor {floor}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        <Text style={styles.selectorResultsText}>
+          Showing {filteredRoomOptions.length} room{filteredRoomOptions.length === 1 ? "" : "s"}
+        </Text>
+
+        <FlatList
+          data={filteredRoomOptions}
+          keyExtractor={(item) => item.code}
+          contentContainerStyle={styles.roomList}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => handleSelectRoom(item)}
+              style={[
+                styles.roomListItem,
+                selectedRoomCode === item.code ? styles.roomListItemActive : null,
+              ]}
+            >
+              <Text style={styles.roomCodeText}>{item.code}</Text>
+              <Text style={styles.roomMetaText}>
+                Building {item.building}
+                {item.floor ? ` • Floor ${item.floor}` : ""}
+              </Text>
+            </Pressable>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              No rooms match this filter. Change building/floor or search text.
+            </Text>
+          }
+        />
+      </View>
+    </View>
   );
 
   return (
@@ -324,6 +546,24 @@ export function ReporterHome(props: {
         windowSize={7}
         updateCellsBatchingPeriod={50}
       />
+
+      <Modal
+        animationType={isAndroid ? "fade" : "slide"}
+        visible={isRoomSelectorVisible}
+        onRequestClose={closeRoomSelector}
+        presentationStyle={isAndroid ? "fullScreen" : "pageSheet"}
+        transparent={isAndroid}
+        statusBarTranslucent={isAndroid}
+      >
+        {isAndroid ? (
+          <View style={styles.androidSheetOverlay}>
+            <Pressable style={styles.androidSheetBackdrop} onPress={closeRoomSelector} />
+            <View style={styles.androidSheetCard}>{roomSelectorSheet}</View>
+          </View>
+        ) : (
+          roomSelectorSheet
+        )}
+      </Modal>
 
       <ReporterTicketDetailsModal
         visible={isDetailsVisible}

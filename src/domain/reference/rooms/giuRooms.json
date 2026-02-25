@@ -1,0 +1,805 @@
+[
+    {
+        "name": "NA",
+        "room": "S3.237"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "A.020"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "A1.101"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "A1.201"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "A3.128"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "A3.228"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "A3.328"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "C.101"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "C.102"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "C.201"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "C.202"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "M1.014"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "M1.105"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "M1.205"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "M1.305"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "M3.031"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "S3.234"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "S3.238"
+    },
+    {
+        "name": "Lecture Hall 250",
+        "room": "S3.334"
+    },
+    {
+        "name": "Lecture Hall 100",
+        "room": "A3.428"
+    },
+    {
+        "name": "Lecture Hall 100",
+        "room": "A3.429"
+    },
+    {
+        "name": "Lecture Hall 100",
+        "room": "Reserved Area"
+    },
+    {
+        "name": "Lecture Hall 100",
+        "room": "S3.431"
+    },
+    {
+        "name": "Lecture Hall 100",
+        "room": "S3.435"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "3.25"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A1.301"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.006"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.007"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.008"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.009"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.010"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.011"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.012"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.014"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.115"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.117"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "A2.321"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.208"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.308"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.310"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.312"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.313"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.314"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.315"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.408"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.410"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.412"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "C.414"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M1.302"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M1.502"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M1.506"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M1.507"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M1.508"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M2.511"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M3.430"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M3.431"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "M3.434"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S1.006"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S1.107"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S1.501"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S1.601"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S1.618"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.015A"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.015B"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.101"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.113"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.114"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.115"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.116"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.117"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.118"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.201"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.221"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.222"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.225"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.226"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.301"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.321"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.322"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.325"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.326"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.327"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.425"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.426"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.427"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.520"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.521"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.522"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.523"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.524"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.525"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.526"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S2.527"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "S4.401"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "U1.101"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "U1.102"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "U1.103"
+    },
+    {
+        "name": "Exercise Room",
+        "room": "U1.104"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.108"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.112"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.208"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.209"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.212"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.215"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "A2.217"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "C.211"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "C.309"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "C.311"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "C.409"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "C.411"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "M1.102"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "M1.402"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "M3.327"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "M3.328"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "S1.518"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "S2.218"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "S2.219"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "S2.323"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "S2.324"
+    },
+    {
+        "name": "Computer Lab.",
+        "room": "S2.519"
+    },
+    {
+        "name": "Pharmacognosy/Biology Lab.",
+        "room": "S2.624"
+    },
+    {
+        "name": "Chemistry Lab.",
+        "room": "S2.621"
+    },
+    {
+        "name": "Chemistry Lab.",
+        "room": "S2.622"
+    },
+    {
+        "name": "Networking Lab.",
+        "room": "A2.221"
+    },
+    {
+        "name": "Networking Lab.",
+        "room": "S2.319"
+    },
+    {
+        "name": "Electronics Lab.",
+        "room": "S2.419"
+    },
+    {
+        "name": "Electronics Lab.",
+        "room": "S2.421"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "M2.016"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "M2.512"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "M3.224"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "M3.429"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "Panorama"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "S2.102"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "S2.103"
+    },
+    {
+        "name": "Meeting Room",
+        "room": "S3.104"
+    },
+    {
+        "name": "Physiology Lab.",
+        "room": "C.210"
+    },
+    {
+        "name": "Physiology Lab.",
+        "room": "C.212"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "A2.109"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "C.209"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "M1.201"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "M3.227"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "M3.228"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "M3.432"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "M3.433"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "S2.111"
+    },
+    {
+        "name": "Language Lab.",
+        "room": "S2.112"
+    },
+    {
+        "name": "Analytical Chemistry Lab.",
+        "room": "S2.620"
+    },
+    {
+        "name": "Pharmaceutics lab.",
+        "room": "S2.635"
+    },
+    {
+        "name": "- TC02"
+    },
+    {
+        "name": "Pharmaceutical Chemistry Lab.",
+        "room": "S2.619"
+    },
+    {
+        "name": "Instrumental Analysis Lab.",
+        "room": "TC11"
+    },
+    {
+        "name": "Mac Lab",
+        "room": "M2.320"
+    },
+    {
+        "name": "Workshop",
+        "room": "TC01"
+    },
+    {
+        "name": "CNC Lab.",
+        "room": "test2"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M2.414"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M2.419"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M2.420"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M2.425"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M3.329"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M3.333"
+    },
+    {
+        "name": "Staff Office",
+        "room": "M3.437"
+    },
+    {
+        "name": "Staff Office",
+        "room": "S1.401"
+    },
+    {
+        "name": "Staff Office",
+        "room": "S3.533"
+    },
+    {
+        "name": "Metrology Lab.",
+        "room": "S2.420"
+    },
+    {
+        "name": "Metrology Lab.",
+        "room": "S2.422"
+    },
+    {
+        "name": "Fermentation Lab.",
+        "room": "S2.625"
+    },
+    {
+        "name": "Control Room",
+        "room": "S1.104"
+    },
+    {
+        "name": "Design studio",
+        "room": "M.045"
+    },
+    {
+        "name": "Design studio",
+        "room": "M1.202"
+    },
+    {
+        "name": "Design studio",
+        "room": "M2.209"
+    },
+    {
+        "name": "Design studio",
+        "room": "M2.215"
+    },
+    {
+        "name": "Design studio",
+        "room": "M3.226"
+    },
+    {
+        "name": "Design studio",
+        "room": "M3.229"
+    },
+    {
+        "name": "Design studio",
+        "room": "M3.232"
+    },
+    {
+        "name": "Design studio",
+        "room": "M3.326"
+    },
+    {
+        "name": "Design studio",
+        "room": "TC13"
+    },
+    {
+        "name": "Industrial Design Workshop",
+        "room": "TC10"
+    },
+    {
+        "name": "Industrial Design Workshop",
+        "room": "TC14"
+    },
+    {
+        "name": "Industrial Design Workshop",
+        "room": "TC15"
+    },
+    {
+        "name": "Microcontroller Lab",
+        "room": "S2.318"
+    },
+    {
+        "name": "Microcontroller Lab",
+        "room": "S2.424"
+    },
+    {
+        "name": "FD Studio",
+        "room": "TC04"
+    },
+    {
+        "name": "FD Gerber Lab",
+        "room": "TC03"
+    },
+    {
+        "name": "Fashion Design Workshop",
+        "room": "TC05"
+    },
+    {
+        "name": "Automation Lab",
+        "room": "S2.223"
+    },
+    {
+        "name": "Automation Lab",
+        "room": "TC06"
+    },
+    {
+        "name": "Industry Lab",
+        "room": "S2.220"
+    },
+    {
+        "name": "Robotics Lab",
+        "room": "S2.224"
+    },
+    {
+        "name": "Robotics Lab",
+        "room": "S2.227"
+    },
+    {
+        "name": "VR Lab",
+        "room": "S2.320"
+    },
+    {
+        "name": "Electrical Engineering Lab",
+        "room": "TC18"
+    },
+    {
+        "name": "Electrical Engineering Lab",
+        "room": "TC19"
+    },
+    {
+        "name": "Automotive Lab",
+        "room": "TC07"
+    },
+    {
+        "name": "Automotive Lab",
+        "room": "TC08"
+    },
+    {
+        "name": "Self-Driving Car",
+        "room": "TC09"
+    },
+    {
+        "name": "physical therapy room",
+        "room": "C.214"
+    },
+    {
+        "name": "physical therapy room",
+        "room": "M2.220"
+    },
+    {
+        "name": "physical therapy room",
+        "room": "U.301"
+    },
+    {
+        "name": "physical therapy room",
+        "room": "U.302"
+    },
+    {
+        "name": "physical therapy room",
+        "room": "U.401"
+    },
+    {
+        "name": "physical therapy room",
+        "room": "U.402"
+    }
+]

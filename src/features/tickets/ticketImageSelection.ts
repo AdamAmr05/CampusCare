@@ -45,7 +45,8 @@ async function requestPermission(
 async function launchPicker(source: TicketImageSource): Promise<ImagePicker.ImagePickerResult> {
   const options: ImagePicker.ImagePickerOptions = {
     mediaTypes: ["images"],
-    allowsEditing: true,
+    // Keep system-native capture/picker flow and avoid platform crop UI.
+    allowsEditing: false,
     quality: 0.8,
   };
 
