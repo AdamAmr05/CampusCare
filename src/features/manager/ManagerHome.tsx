@@ -8,7 +8,7 @@ import type { ResolverRequest } from "../auth/types";
 import { ImageLightbox } from "../tickets/ImageLightbox";
 import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
-import type { ResolverOption, Ticket } from "../tickets/types";
+import type { ResolverOption, Ticket, TicketWithHistory } from "../tickets/types";
 import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { AppScreen } from "../../ui/AppScreen";
@@ -57,8 +57,13 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
   const [assignmentNotes, setAssignmentNotes] = useState<Record<string, string>>({});
   const [closureNotes, setClosureNotes] = useState<Record<string, string>>({});
   const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<Id<"tickets"> | null>(null);
   const [selectedTicketPreview, setSelectedTicketPreview] = useState<Ticket | null>(null);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const selectedTicket = useQuery(
+    api.ticketsShared.getById,
+    isDetailsVisible && selectedTicketId ? { ticketId: selectedTicketId } : "skip",
+  ) as TicketWithHistory | null | undefined;
 
   const pendingRequests = useMemo(
     () => resolverRequestsQuery.results as ResolverRequest[],
@@ -160,6 +165,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
   );
 
   const openTicketDetails = useCallback((ticket: Ticket) => {
+    setSelectedTicketId(ticket._id);
     setSelectedTicketPreview(ticket);
     setIsDetailsVisible(true);
   }, []);
@@ -174,6 +180,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
     }
 
     const timeoutId = setTimeout(() => {
+      setSelectedTicketId(null);
       setSelectedTicketPreview(null);
     }, 260);
 
@@ -533,9 +540,9 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
       ) : null}
       <TicketDetailsPanel
         visible={isDetailsVisible}
-        ticket={selectedTicketPreview}
-        historyEntries={null}
-        historyUnavailableText="Status history is not shown in Manager lists yet."
+        ticket={selectedTicket?.ticket ?? selectedTicketPreview}
+        historyEntries={selectedTicket === undefined ? undefined : selectedTicket?.history ?? null}
+        historyUnavailableText="Status history is unavailable for this ticket."
         onClose={closeTicketDetails}
       />
       <ImageLightbox imageUri={lightboxImageUri} onClose={() => setLightboxImageUri(null)} />

@@ -8,10 +8,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { Ticket } from "../tickets/types";
+import type { Ticket, TicketWithHistory } from "../tickets/types";
 import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
@@ -57,8 +57,13 @@ export function ResolverHome(props: {
   const [processingTicketId, setProcessingTicketId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<Id<"tickets"> | null>(null);
   const [selectedTicketPreview, setSelectedTicketPreview] = useState<Ticket | null>(null);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const selectedTicket = useQuery(
+    api.ticketsShared.getById,
+    isDetailsVisible && selectedTicketId ? { ticketId: selectedTicketId } : "skip",
+  ) as TicketWithHistory | null | undefined;
 
   const onSelectResolutionImage = useCallback(async (args: {
     ticketId: string;
@@ -149,6 +154,7 @@ export function ResolverHome(props: {
   );
 
   const openTicketDetails = useCallback((ticket: Ticket) => {
+    setSelectedTicketId(ticket._id);
     setSelectedTicketPreview(ticket);
     setIsDetailsVisible(true);
   }, []);
@@ -163,6 +169,7 @@ export function ResolverHome(props: {
     }
 
     const timeoutId = setTimeout(() => {
+      setSelectedTicketId(null);
       setSelectedTicketPreview(null);
     }, 260);
 
@@ -387,9 +394,9 @@ export function ResolverHome(props: {
       />
       <TicketDetailsPanel
         visible={isDetailsVisible}
-        ticket={selectedTicketPreview}
-        historyEntries={null}
-        historyUnavailableText="Status history is not shown in Resolver lists yet."
+        ticket={selectedTicket?.ticket ?? selectedTicketPreview}
+        historyEntries={selectedTicket === undefined ? undefined : selectedTicket?.history ?? null}
+        historyUnavailableText="Status history is unavailable for this ticket."
         onClose={closeTicketDetails}
       />
       <ImageLightbox imageUri={lightboxImageUri} onClose={() => setLightboxImageUri(null)} />
