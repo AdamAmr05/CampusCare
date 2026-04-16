@@ -1,18 +1,6 @@
-import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "../convex/_generated/api";
-import schema from "../convex/schema";
-
-const convexModules = (
-  import.meta as ImportMeta & {
-    glob: (pattern: string) => Record<string, () => Promise<unknown>>;
-  }
-).glob("../convex/**/*.*s");
-
-function createHarness() {
-  process.env.MANAGER_EMAIL_ALLOWLIST = "manager@giu-uni.de";
-  return convexTest(schema, convexModules);
-}
+import { createHarness } from "./testHarness";
 
 type TestHarness = ReturnType<typeof createHarness>;
 type IdentityClient = ReturnType<TestHarness["withIdentity"]>;
@@ -63,12 +51,65 @@ describe("auth onboarding intent behavior", () => {
     expect(access.accountStatus).toBe("pending_resolver_approval");
 
     await requester.mutation(api.notifications.registerPushToken, {
+      installationId: "pending-user-installation",
       expoPushToken: "ExpoPushToken[pending-user-device-token]",
       platform: "ios",
     });
 
     const mine = await requester.query(api.auth.getMyAccess, {});
     expect(mine?.accountStatus).toBe("pending_resolver_approval");
+  });
+
+  it("tracks push registrations per installation and removes only the targeted installation", async () => {
+    const t = createHarness();
+    const requester = t.withIdentity({
+      tokenIdentifier: "resolver-push-multi-1",
+      email: "resolver.push.multi@student.giu-uni.de",
+      emailVerified: true,
+      name: "Resolver Push Multi",
+    });
+
+    const access = await requester.mutation(api.auth.upsertCurrentUser, {
+      intent: "resolver",
+    });
+
+    await requester.mutation(api.notifications.registerPushToken, {
+      installationId: "installation-ios",
+      expoPushToken: "ExpoPushToken[multi-installation-token-ios]",
+      platform: "ios",
+    });
+    await requester.mutation(api.notifications.registerPushToken, {
+      installationId: "installation-android",
+      expoPushToken: "ExpoPushToken[multi-installation-token-android]",
+      platform: "android",
+    });
+
+    const registrationsBeforeDisable = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("push_registrations")
+        .withIndex("by_userId_and_updatedAt", (queryBuilder) =>
+          queryBuilder.eq("userId", access.userId),
+        )
+        .collect();
+    });
+
+    expect(registrationsBeforeDisable).toHaveLength(2);
+
+    await requester.mutation(api.notifications.disablePushToken, {
+      installationId: "installation-ios",
+    });
+
+    const registrationsAfterDisable = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("push_registrations")
+        .withIndex("by_userId_and_updatedAt", (queryBuilder) =>
+          queryBuilder.eq("userId", access.userId),
+        )
+        .collect();
+    });
+
+    expect(registrationsAfterDisable).toHaveLength(1);
+    expect(registrationsAfterDisable[0]?.installationId).toBe("installation-android");
   });
 
   it("can create a self-test notification for active users", async () => {

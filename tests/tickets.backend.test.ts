@@ -1,20 +1,8 @@
-import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { assertValidTicketImageFile } from "../convex/lib/tickets";
-import schema from "../convex/schema";
-
-const convexModules = (
-  import.meta as ImportMeta & {
-    glob: (pattern: string) => Record<string, () => Promise<unknown>>;
-  }
-).glob("../convex/**/*.*s");
-
-function createHarness() {
-  process.env.MANAGER_EMAIL_ALLOWLIST = "manager@giu-uni.de";
-  return convexTest(schema, convexModules);
-}
+import { createHarness } from "./testHarness";
 
 type TestHarness = ReturnType<typeof createHarness>;
 type IdentityClient = ReturnType<TestHarness["withIdentity"]>;
