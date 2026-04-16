@@ -2,7 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
   accountStatusValidator,
-  notificationPushStatusValidator,
   notificationTypeValidator,
   pushPlatformValidator,
   resolverRequestStatusValidator,
@@ -85,24 +84,20 @@ export default defineSchema({
     dedupeKey: v.union(v.string(), v.null()),
     createdAt: v.number(),
     readAt: v.union(v.number(), v.null()),
-    pushStatus: notificationPushStatusValidator,
-    pushLastAttemptAt: v.union(v.number(), v.null()),
-    pushLastError: v.union(v.string(), v.null()),
   })
     .index("by_recipientUserId_and_createdAt", ["recipientUserId", "createdAt"])
     .index("by_recipientUserId_and_readAt", ["recipientUserId", "readAt"])
     .index("by_dedupeKey", ["dedupeKey"])
     .index("by_ticketId_and_createdAt", ["ticketId", "createdAt"]),
 
-  push_tokens: defineTable({
+  push_registrations: defineTable({
     userId: v.id("users"),
-    expoPushToken: v.string(),
+    installationId: v.string(),
+    deliveryTargetId: v.string(),
     platform: pushPlatformValidator,
-    enabled: v.boolean(),
-    lastRegisteredAt: v.number(),
+    createdAt: v.number(),
     updatedAt: v.number(),
-    lastError: v.union(v.string(), v.null()),
   })
-    .index("by_userId_and_enabled", ["userId", "enabled"])
-    .index("by_expoPushToken", ["expoPushToken"]),
+    .index("by_installationId", ["installationId"])
+    .index("by_userId_and_updatedAt", ["userId", "updatedAt"]),
 });

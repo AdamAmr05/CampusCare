@@ -14,6 +14,7 @@ import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import type { AccessSummary } from "./types";
 import { styles } from "./AuthenticatedGate.styles";
+import { getStoredPushInstallationId } from "../notifications/pushInstallation";
 
 export function AuthenticatedGate(props: {
   intent: OnboardingIntent;
@@ -38,7 +39,12 @@ export function AuthenticatedGate(props: {
 
   const handleSignOut = useCallback(async () => {
     try {
-      await disablePushToken({});
+      const installationId = await getStoredPushInstallationId();
+      if (installationId) {
+        await disablePushToken({ installationId });
+      } else {
+        await disablePushToken({});
+      }
     } catch {
       // Sign-out should proceed even if token cleanup fails.
     }

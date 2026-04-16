@@ -6,6 +6,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { api } from "../../../convex/_generated/api";
 import { formatError } from "../../utils/formatError";
+import { getOrCreatePushInstallationId } from "./pushInstallation";
 
 type PushPlatform = "ios" | "android" | "web" | "unknown";
 
@@ -89,7 +90,9 @@ export function usePushRegistration(enabled: boolean): void {
       }
 
       try {
+        const installationId = await getOrCreatePushInstallationId();
         await registerPushToken({
+          installationId,
           expoPushToken,
           platform: getPushPlatform(),
         });
@@ -98,7 +101,9 @@ export function usePushRegistration(enabled: boolean): void {
       }
     };
 
-    const registerDeviceToken = async (devicePushToken: Notifications.DevicePushToken) => {
+    const registerDeviceToken = async (
+      devicePushToken: Notifications.DevicePushToken,
+    ) => {
       if (cancelled) {
         return;
       }

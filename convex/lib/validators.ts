@@ -37,13 +37,6 @@ export const notificationTypeValidator = v.union(
   v.literal("resolver_request_rejected"),
 );
 
-export const notificationPushStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("sent"),
-  v.literal("failed"),
-  v.literal("skipped"),
-);
-
 export const pushPlatformValidator = v.union(
   v.literal("ios"),
   v.literal("android"),

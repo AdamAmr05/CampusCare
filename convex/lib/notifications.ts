@@ -1,8 +1,7 @@
 import { ConvexError } from "convex/values";
-import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { isExpoPushEnabled } from "./env";
+import { sendPushNotificationToUser } from "./pushNotifications";
 
 const NOTIFICATION_TITLE_MAX_LENGTH = 120;
 const NOTIFICATION_BODY_MAX_LENGTH = 280;
@@ -114,7 +113,6 @@ export async function createNotificationForUser(
     }
   }
 
-  const shouldAttemptPush = isExpoPushEnabled();
   const notificationId = await ctx.db.insert("notifications", {
     recipientUserId: args.recipientUserId,
     actorUserId: args.actorUserId,
@@ -126,14 +124,26 @@ export async function createNotificationForUser(
     dedupeKey,
     createdAt: Date.now(),
     readAt: null,
-    pushStatus: shouldAttemptPush ? "pending" : "skipped",
-    pushLastAttemptAt: null,
-    pushLastError: null,
   });
 
-  if (shouldAttemptPush) {
-    await ctx.scheduler.runAfter(0, internal.notifications.deliverPush, {
+  try {
+    await sendPushNotificationToUser(ctx, {
+      userId: args.recipientUserId,
+      notification: {
+        title,
+        body,
+        data: {
+          notificationId,
+          type: args.type,
+          ticketId: args.ticketId,
+          resolverRequestId: args.resolverRequestId,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Failed to enqueue push notification delivery", {
       notificationId,
+      error,
     });
   }
 

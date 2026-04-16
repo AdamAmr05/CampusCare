@@ -1,8 +1,5 @@
 import type { Id } from "../../../convex/_generated/dataModel";
-import type {
-  NotificationPushStatus,
-  NotificationType,
-} from "../../domain/types";
+import type { NotificationType } from "../../domain/types";
 
 export type AppNotification = {
   _id: Id<"notifications">;
@@ -16,7 +13,4 @@ export type AppNotification = {
   dedupeKey: string | null;
   createdAt: number;
   readAt: number | null;
-  pushStatus: NotificationPushStatus;
-  pushLastAttemptAt: number | null;
-  pushLastError: string | null;
 };
