@@ -26,16 +26,14 @@ Required variables:
 - `EXPO_PUBLIC_CONVEX_URL`
 - `CLERK_JWT_ISSUER_DOMAIN`
 - `MANAGER_EMAIL_ALLOWLIST` (comma-separated lowercase emails)
-
-Optional notification variables:
-- `EXPO_PUSH_ENABLED` (`true` to attempt Expo push delivery from Convex actions)
-- `EXPO_PUSH_ACCESS_TOKEN` (optional bearer token for secured Expo Push API calls)
 - `EXPO_PUBLIC_EAS_PROJECT_ID` (recommended fallback for Expo push token registration)
 
 Push flow note:
 - App now auto-registers push tokens after authenticated sync using `expo-notifications`.
 - Registration entrypoint: `src/features/notifications/usePushRegistration.ts`.
+- Delivery transport: `@convex-dev/expo-push-notifications`.
 - Backend registration mutation: `notifications.registerPushToken`.
+- Registration is tracked per app installation so one user can receive push on multiple devices.
 
 Push credentials (EAS):
 - iOS (APNs): run `eas credentials -p ios` and set up a Push Key for your bundle identifier.
