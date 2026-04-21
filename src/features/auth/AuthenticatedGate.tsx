@@ -16,6 +16,141 @@ import type { AccessSummary } from "./types";
 import { styles } from "./AuthenticatedGate.styles";
 import { getStoredPushInstallationId } from "../notifications/pushInstallation";
 
+type ResolverRejectedViewProps = {
+  decisionNote: string | null;
+  isSubmitting: boolean;
+  onReasonChange: (value: string) => void;
+  onReapply: () => void;
+  onSignOut: () => void;
+  reason: string;
+  reapplyError: string;
+};
+
+type ReadyAccessViewArgs = {
+  access: AccessSummary;
+  intent: OnboardingIntent;
+  onIntentChanged: (intent: OnboardingIntent) => void;
+  onReapply: () => void;
+  onReasonChange: (value: string) => void;
+  onSignOut: () => void;
+  reason: string;
+  reapplyError: string;
+  reapplying: boolean;
+};
+
+function ResolverRejectedView({
+  decisionNote,
+  isSubmitting,
+  onReasonChange,
+  onReapply,
+  onSignOut,
+  reason,
+  reapplyError,
+}: ResolverRejectedViewProps): React.JSX.Element {
+  return (
+    <AppScreen>
+      <View style={styles.card}>
+        <Text style={styles.title}>Resolver request rejected</Text>
+        <Text style={styles.subtitle}>
+          Manager note: {decisionNote ?? "No note provided."}
+        </Text>
+
+        <TextInput
+          placeholder="Optional reason for reapply"
+          placeholderTextColor={theme.colors.textMuted}
+          style={styles.input}
+          value={reason}
+          onChangeText={onReasonChange}
+        />
+
+        <Pressable
+          onPress={onReapply}
+          disabled={isSubmitting}
+          style={[styles.primaryButton, isSubmitting ? styles.disabled : null]}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting ? "Submitting..." : "Reapply for resolver"}
+          </Text>
+        </Pressable>
+
+        {reapplyError.length > 0 ? (
+          <Text style={styles.errorText}>{reapplyError}</Text>
+        ) : null}
+
+        <Pressable onPress={onSignOut} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Sign out</Text>
+        </Pressable>
+      </View>
+    </AppScreen>
+  );
+}
+
+function renderReadyAccessView({
+  access,
+  intent,
+  onIntentChanged,
+  onReapply,
+  onReasonChange,
+  onSignOut,
+  reason,
+  reapplyError,
+  reapplying,
+}: ReadyAccessViewArgs): React.JSX.Element {
+  if (access.accountStatus === "pending_resolver_approval") {
+    return (
+      <InfoScreen
+        title="Resolver request pending"
+        message="Your resolver request is pending manager approval. Protected app features remain locked until a decision is made."
+        footer={
+          <Pressable onPress={onSignOut} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Sign out</Text>
+          </Pressable>
+        }
+      />
+    );
+  }
+
+  if (access.accountStatus === "resolver_rejected") {
+    return (
+      <ResolverRejectedView
+        decisionNote={access.latestResolverDecisionNote}
+        isSubmitting={reapplying}
+        onReasonChange={onReasonChange}
+        onReapply={onReapply}
+        onSignOut={onSignOut}
+        reason={reason}
+        reapplyError={reapplyError}
+      />
+    );
+  }
+
+  if (access.role === "manager") {
+    return <ManagerHome email={access.email} onSignOut={onSignOut} />;
+  }
+
+  if (access.role === "resolver" && intent !== "reporter") {
+    return (
+      <ResolverHome
+        email={access.email}
+        onSignOut={onSignOut}
+        onSwitchToReporter={() => onIntentChanged("reporter")}
+      />
+    );
+  }
+
+  return (
+    <ReporterHome
+      email={access.email}
+      onSignOut={onSignOut}
+      onSwitchToResolver={
+        access.role === "resolver"
+          ? () => onIntentChanged("resolver")
+          : undefined
+      }
+    />
+  );
+}
+
 export function AuthenticatedGate(props: {
   intent: OnboardingIntent;
   onIntentChanged: (intent: OnboardingIntent) => void;
@@ -26,8 +161,11 @@ export function AuthenticatedGate(props: {
   const disablePushToken = useMutation(api.notifications.disablePushToken);
   const access = useQuery(api.auth.getMyAccess) as AccessSummary | null | undefined;
 
-  const [lastSyncedIntent, setLastSyncedIntent] = useState<OnboardingIntent | null>(null);
-  const [syncState, setSyncState] = useState<"idle" | "syncing" | "ready" | "error">("idle");
+  const [lastSyncedIntent, setLastSyncedIntent] =
+    useState<OnboardingIntent | null>(null);
+  const [syncState, setSyncState] = useState<
+    "idle" | "syncing" | "ready" | "error"
+  >("idle");
   const [syncError, setSyncError] = useState<string>("");
 
   const [reapplyReason, setReapplyReason] = useState("");
@@ -40,6 +178,7 @@ export function AuthenticatedGate(props: {
   const handleSignOut = useCallback(async () => {
     try {
       const installationId = await getStoredPushInstallationId();
+
       if (installationId) {
         await disablePushToken({ installationId });
       } else {
@@ -48,8 +187,36 @@ export function AuthenticatedGate(props: {
     } catch {
       // Sign-out should proceed even if token cleanup fails.
     }
+
     await signOut();
   }, [disablePushToken, signOut]);
+
+  const retrySync = useCallback(() => {
+    setSyncAttempt((previous) => previous + 1);
+    setLastSyncedIntent(null);
+  }, []);
+
+  const onReapply = useCallback(async () => {
+    setReapplyError("");
+    setReapplying(true);
+
+    try {
+      const trimmedReason = reapplyReason.trim();
+
+      if (trimmedReason.length > 0) {
+        await reapplyResolverRequest({ reason: trimmedReason });
+      } else {
+        await reapplyResolverRequest({});
+      }
+
+      props.onIntentChanged("resolver");
+      setLastSyncedIntent(null);
+    } catch (error) {
+      setReapplyError(formatError(error));
+    } finally {
+      setReapplying(false);
+    }
+  }, [props, reapplyReason, reapplyResolverRequest]);
 
   useEffect(() => {
     if (lastSyncedIntent === props.intent) {
@@ -66,9 +233,18 @@ export function AuthenticatedGate(props: {
         await Promise.race([
           upsertCurrentUser({ intent: props.intent }),
           new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("Account sync timed out. Check network and Convex dev status.")), 15000);
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    "Account sync timed out. Check network and Convex dev status.",
+                  ),
+                ),
+              15000,
+            );
           }),
         ]);
+
         if (!cancelled) {
           setLastSyncedIntent(props.intent);
           setSyncState("ready");
@@ -86,7 +262,7 @@ export function AuthenticatedGate(props: {
     return () => {
       cancelled = true;
     };
-  }, [lastSyncedIntent, props.intent, upsertCurrentUser, syncAttempt]);
+  }, [lastSyncedIntent, props.intent, syncAttempt, upsertCurrentUser]);
 
   if (syncState === "error") {
     return (
@@ -95,13 +271,7 @@ export function AuthenticatedGate(props: {
         message={syncError}
         footer={
           <>
-            <Pressable
-              onPress={() => {
-                setSyncAttempt((previous) => previous + 1);
-                setLastSyncedIntent(null);
-              }}
-              style={styles.primaryButton}
-            >
+            <Pressable onPress={retrySync} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Retry sync</Text>
             </Pressable>
             <Pressable onPress={() => void handleSignOut()} style={styles.secondaryButton}>
@@ -126,99 +296,19 @@ export function AuthenticatedGate(props: {
     );
   }
 
-  if (access.accountStatus === "pending_resolver_approval") {
-    return (
-      <InfoScreen
-        title="Resolver request pending"
-        message="Your resolver request is pending manager approval. Protected app features remain locked until a decision is made."
-        footer={
-          <Pressable onPress={() => void handleSignOut()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Sign out</Text>
-          </Pressable>
-        }
-      />
-    );
-  }
-
-  if (access.accountStatus === "resolver_rejected") {
-    const onReapply = async () => {
-      setReapplyError("");
-      setReapplying(true);
-
-      try {
-        const trimmedReason = reapplyReason.trim();
-        if (trimmedReason.length > 0) {
-          await reapplyResolverRequest({ reason: trimmedReason });
-        } else {
-          await reapplyResolverRequest({});
-        }
-        props.onIntentChanged("resolver");
-        setLastSyncedIntent(null);
-      } catch (error) {
-        setReapplyError(formatError(error));
-      } finally {
-        setReapplying(false);
-      }
-    };
-
-    return (
-      <AppScreen>
-        <View style={styles.card}>
-          <Text style={styles.title}>Resolver request rejected</Text>
-          <Text style={styles.subtitle}>
-            Manager note: {access.latestResolverDecisionNote ?? "No note provided."}
-          </Text>
-
-          <TextInput
-            placeholder="Optional reason for reapply"
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.input}
-            value={reapplyReason}
-            onChangeText={setReapplyReason}
-          />
-
-          <Pressable
-            onPress={onReapply}
-            disabled={reapplying}
-            style={[styles.primaryButton, reapplying ? styles.disabled : null]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {reapplying ? "Submitting..." : "Reapply for resolver"}
-            </Text>
-          </Pressable>
-
-          {reapplyError.length > 0 ? <Text style={styles.errorText}>{reapplyError}</Text> : null}
-
-          <Pressable onPress={() => void handleSignOut()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Sign out</Text>
-          </Pressable>
-        </View>
-      </AppScreen>
-    );
-  }
-
-  if (access.role === "manager") {
-    return <ManagerHome email={access.email} onSignOut={() => void handleSignOut()} />;
-  }
-
-  if (access.role === "resolver") {
-    if (props.intent === "reporter") {
-      return (
-        <ReporterHome
-          email={access.email}
-          onSignOut={() => void handleSignOut()}
-          onSwitchToResolver={() => props.onIntentChanged("resolver")}
-        />
-      );
-    }
-    return (
-      <ResolverHome
-        email={access.email}
-        onSignOut={() => void handleSignOut()}
-        onSwitchToReporter={() => props.onIntentChanged("reporter")}
-      />
-    );
-  }
-
-  return <ReporterHome email={access.email} onSignOut={() => void handleSignOut()} />;
+  return renderReadyAccessView({
+    access,
+    intent: props.intent,
+    onIntentChanged: props.onIntentChanged,
+    onReapply: () => {
+      void onReapply();
+    },
+    onReasonChange: setReapplyReason,
+    onSignOut: () => {
+      void handleSignOut();
+    },
+    reason: reapplyReason,
+    reapplyError,
+    reapplying,
+  });
 }

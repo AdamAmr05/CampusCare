@@ -7,7 +7,13 @@ import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { styles } from "./AuthForm.styles";
 
-type SecondFactorStrategy = "totp" | "backup_code" | "phone_code" | "email_code";
+type AuthMode = "sign_in" | "sign_up";
+type AuthStage = "credentials" | "verification" | "second_factor";
+type SecondFactorStrategy =
+  | "totp"
+  | "backup_code"
+  | "phone_code"
+  | "email_code";
 
 type SecondFactorOption = {
   strategy: SecondFactorStrategy;
@@ -24,6 +30,47 @@ type RawSecondFactor = {
   phoneNumberId?: string;
   emailAddressId?: string;
   primary?: boolean;
+};
+
+type IntentSelectorProps = {
+  intent: OnboardingIntent;
+  onSelectIntent: (intent: OnboardingIntent) => void;
+};
+
+type SecondFactorStepProps = {
+  code: string;
+  isSubmitting: boolean;
+  loaded: boolean;
+  options: SecondFactorOption[];
+  selectedOption: SecondFactorOption | null;
+  onCodeChange: (code: string) => void;
+  onSelectOption: (option: SecondFactorOption) => void;
+  onSubmit: () => void;
+};
+
+type CredentialsStepProps = {
+  email: string;
+  firstName: string;
+  isSubmitting: boolean;
+  lastName: string;
+  loaded: boolean;
+  mode: AuthMode;
+  password: string;
+  onEmailChange: (value: string) => void;
+  onFirstNameChange: (value: string) => void;
+  onLastNameChange: (value: string) => void;
+  onModeChange: (mode: AuthMode) => void;
+  onPasswordChange: (value: string) => void;
+  onSubmitSignIn: () => void;
+  onSubmitSignUp: () => void;
+};
+
+type VerificationStepProps = {
+  code: string;
+  isSubmitting: boolean;
+  loaded: boolean;
+  onCodeChange: (code: string) => void;
+  onSubmit: () => void;
 };
 
 function getIncompleteSignInMessage(status: string | null | undefined): string {
@@ -103,7 +150,324 @@ function extractSecondFactorOptions(
     }
   }
 
-  return options.sort((a, b) => Number(Boolean(b.primary)) - Number(Boolean(a.primary)));
+  return options.sort(
+    (a, b) => Number(Boolean(b.primary)) - Number(Boolean(a.primary)),
+  );
+}
+
+function getSecondFactorKey(option: SecondFactorOption): string {
+  return `${option.strategy}-${option.safeIdentifier ?? "default"}`;
+}
+
+function getAuthStage(args: {
+  awaitingSecondFactor: boolean;
+  awaitingVerification: boolean;
+}): AuthStage {
+  if (args.awaitingSecondFactor) {
+    return "second_factor";
+  }
+
+  if (args.awaitingVerification) {
+    return "verification";
+  }
+
+  return "credentials";
+}
+
+function getAuthHeading(intent: OnboardingIntent): string {
+  return intent === "resolver"
+    ? "Resolver Access Request"
+    : "Reporter Sign In";
+}
+
+function getAuthSubtitle(intent: OnboardingIntent): string {
+  return intent === "resolver"
+    ? "Use your GIU account. Manager approval is required before resolver access is active."
+    : "Sign in with your verified GIU email to report and track issues.";
+}
+
+function requireCompletedSession(args: {
+  createdSessionId?: string | null;
+  incompleteMessage: string;
+  missingSessionMessage: string;
+  status: string | null | undefined;
+}): string {
+  if (args.status !== "complete") {
+    throw new Error(args.incompleteMessage);
+  }
+
+  if (!args.createdSessionId) {
+    throw new Error(args.missingSessionMessage);
+  }
+
+  return args.createdSessionId;
+}
+
+function IntentSelector({
+  intent,
+  onSelectIntent,
+}: IntentSelectorProps): React.JSX.Element {
+  return (
+    <View style={styles.pathRow}>
+      <Pressable
+        onPress={() => onSelectIntent("reporter")}
+        style={[styles.pathChip, intent === "reporter" ? styles.pathChipActive : null]}
+      >
+        <Text
+          style={[
+            styles.pathChipText,
+            intent === "reporter" ? styles.pathChipTextActive : null,
+          ]}
+        >
+          Reporter
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => onSelectIntent("resolver")}
+        style={[styles.pathChip, intent === "resolver" ? styles.pathChipActive : null]}
+      >
+        <Text
+          style={[
+            styles.pathChipText,
+            intent === "resolver" ? styles.pathChipTextActive : null,
+          ]}
+        >
+          Resolver
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function SecondFactorStep({
+  code,
+  isSubmitting,
+  loaded,
+  options,
+  selectedOption,
+  onCodeChange,
+  onSelectOption,
+  onSubmit,
+}: SecondFactorStepProps): React.JSX.Element {
+  const submitDisabled =
+    isSubmitting ||
+    !loaded ||
+    selectedOption === null ||
+    code.trim().length === 0;
+
+  return (
+    <>
+      <Text style={styles.subtitle}>
+        {selectedOption
+          ? `Enter ${getSecondFactorLabel(selectedOption)} to finish sign-in.`
+          : "Enter your second-factor code to finish sign-in."}
+      </Text>
+
+      {options.length > 1 ? (
+        <View style={styles.pathRow}>
+          {options.map((option) => (
+            <Pressable
+              key={getSecondFactorKey(option)}
+              onPress={() => onSelectOption(option)}
+              style={[
+                styles.pathChip,
+                selectedOption?.strategy === option.strategy
+                  ? styles.pathChipActive
+                  : null,
+              ]}
+              disabled={isSubmitting}
+            >
+              <Text
+                style={[
+                  styles.pathChipText,
+                  selectedOption?.strategy === option.strategy
+                    ? styles.pathChipTextActive
+                    : null,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      <TextInput
+        value={code}
+        onChangeText={onCodeChange}
+        style={styles.input}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="number-pad"
+        textContentType="oneTimeCode"
+        autoComplete="one-time-code"
+        placeholder="Second-factor code"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <Pressable
+        onPress={onSubmit}
+        disabled={submitDisabled}
+        style={[
+          styles.primaryButton,
+          submitDisabled ? styles.disabledButton : null,
+        ]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isSubmitting ? "Verifying..." : "Verify and sign in"}
+        </Text>
+      </Pressable>
+    </>
+  );
+}
+
+function CredentialsStep({
+  email,
+  firstName,
+  isSubmitting,
+  lastName,
+  loaded,
+  mode,
+  password,
+  onEmailChange,
+  onFirstNameChange,
+  onLastNameChange,
+  onModeChange,
+  onPasswordChange,
+  onSubmitSignIn,
+  onSubmitSignUp,
+}: CredentialsStepProps): React.JSX.Element {
+  const isSignUp = mode === "sign_up";
+  const onSubmit = isSignUp ? onSubmitSignUp : onSubmitSignIn;
+
+  return (
+    <>
+      <View style={styles.modeRow}>
+        <Pressable
+          onPress={() => onModeChange("sign_in")}
+          style={styles.modeButton}
+        >
+          <Text style={mode === "sign_in" ? styles.modeTextActive : styles.modeText}>
+            Sign in
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onModeChange("sign_up")}
+          style={styles.modeButton}
+        >
+          <Text style={mode === "sign_up" ? styles.modeTextActive : styles.modeText}>
+            Sign up
+          </Text>
+        </Pressable>
+      </View>
+
+      {isSignUp ? (
+        <>
+          <TextInput
+            value={firstName}
+            onChangeText={onFirstNameChange}
+            style={styles.input}
+            placeholder="First name"
+            placeholderTextColor={theme.colors.textMuted}
+            textContentType="givenName"
+            autoComplete="name-given"
+          />
+          <TextInput
+            value={lastName}
+            onChangeText={onLastNameChange}
+            style={styles.input}
+            placeholder="Last name"
+            placeholderTextColor={theme.colors.textMuted}
+            textContentType="familyName"
+            autoComplete="name-family"
+          />
+        </>
+      ) : null}
+
+      <TextInput
+        value={email}
+        onChangeText={onEmailChange}
+        style={styles.input}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        autoComplete="email"
+        placeholder="Email (@*.giu-uni.de)"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <TextInput
+        value={password}
+        onChangeText={onPasswordChange}
+        style={styles.input}
+        secureTextEntry
+        autoCorrect={false}
+        textContentType={isSignUp ? "newPassword" : "password"}
+        autoComplete={isSignUp ? "new-password" : "current-password"}
+        placeholder="Password"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <Pressable
+        onPress={onSubmit}
+        disabled={isSubmitting || !loaded}
+        style={[
+          styles.primaryButton,
+          isSubmitting || !loaded ? styles.disabledButton : null,
+        ]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isSubmitting
+            ? "Working..."
+            : isSignUp
+              ? "Sign up & verify email"
+              : "Sign in"}
+        </Text>
+      </Pressable>
+    </>
+  );
+}
+
+function VerificationStep({
+  code,
+  isSubmitting,
+  loaded,
+  onCodeChange,
+  onSubmit,
+}: VerificationStepProps): React.JSX.Element {
+  return (
+    <>
+      <Text style={styles.subtitle}>
+        Enter the verification code from your GIU inbox.
+      </Text>
+
+      <TextInput
+        value={code}
+        onChangeText={onCodeChange}
+        style={styles.input}
+        autoCapitalize="none"
+        keyboardType="number-pad"
+        textContentType="oneTimeCode"
+        autoComplete="one-time-code"
+        placeholder="Verification code"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <Pressable
+        onPress={onSubmit}
+        disabled={isSubmitting || !loaded}
+        style={[
+          styles.primaryButton,
+          isSubmitting || !loaded ? styles.disabledButton : null,
+        ]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isSubmitting ? "Verifying..." : "Verify and continue"}
+        </Text>
+      </Pressable>
+    </>
+  );
 }
 
 export function AuthForm(props: {
@@ -111,17 +475,22 @@ export function AuthForm(props: {
   onBack: () => void;
   onIntentChange: (intent: OnboardingIntent) => void;
 }): React.JSX.Element {
-  const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } = useSignIn();
-  const { signUp, setActive: setActiveSignUp, isLoaded: signUpLoaded } = useSignUp();
+  const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } =
+    useSignIn();
+  const { signUp, setActive: setActiveSignUp, isLoaded: signUpLoaded } =
+    useSignUp();
 
-  const [mode, setMode] = useState<"sign_in" | "sign_up">("sign_in");
+  const [mode, setMode] = useState<AuthMode>("sign_in");
   const [awaitingVerification, setAwaitingVerification] = useState(false);
   const [awaitingSecondFactor, setAwaitingSecondFactor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [secondFactorOptions, setSecondFactorOptions] = useState<SecondFactorOption[]>([]);
-  const [selectedSecondFactor, setSelectedSecondFactor] = useState<SecondFactorOption | null>(null);
+  const [secondFactorOptions, setSecondFactorOptions] = useState<
+    SecondFactorOption[]
+  >([]);
+  const [selectedSecondFactor, setSelectedSecondFactor] =
+    useState<SecondFactorOption | null>(null);
   const [secondFactorCode, setSecondFactorCode] = useState("");
 
   const [firstName, setFirstName] = useState("");
@@ -131,6 +500,35 @@ export function AuthForm(props: {
   const [verificationCode, setVerificationCode] = useState("");
 
   const loaded = signInLoaded && signUpLoaded;
+  const stage = getAuthStage({
+    awaitingSecondFactor,
+    awaitingVerification,
+  });
+
+  const resetSecondFactorState = () => {
+    setAwaitingSecondFactor(false);
+    setSecondFactorOptions([]);
+    setSelectedSecondFactor(null);
+    setSecondFactorCode("");
+  };
+
+  const resetVerificationState = () => {
+    setAwaitingVerification(false);
+    setVerificationCode("");
+  };
+
+  const runSubmittingAction = async (action: () => Promise<void>) => {
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      await action();
+    } catch (error) {
+      setErrorMessage(formatError(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const prepareSecondFactor = async (option: SecondFactorOption) => {
     if (!signIn) {
@@ -153,8 +551,11 @@ export function AuthForm(props: {
     }
   };
 
-  const beginSecondFactorStep = async (rawFactors: RawSecondFactor[] | null | undefined) => {
+  const beginSecondFactorStep = async (
+    rawFactors: RawSecondFactor[] | null | undefined,
+  ) => {
     const options = extractSecondFactorOptions(rawFactors);
+
     if (options.length === 0) {
       throw new Error(
         "This account requires an unsupported second factor in the current app configuration.",
@@ -171,6 +572,19 @@ export function AuthForm(props: {
     setAwaitingSecondFactor(true);
   };
 
+  const handleIntentChange = (intent: OnboardingIntent) => {
+    props.onIntentChange(intent);
+    resetVerificationState();
+    resetSecondFactorState();
+    setErrorMessage("");
+  };
+
+  const handleModeChange = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    resetSecondFactorState();
+    setErrorMessage("");
+  };
+
   const selectSecondFactor = async (option: SecondFactorOption) => {
     if (!loaded || !signIn) {
       return;
@@ -180,17 +594,11 @@ export function AuthForm(props: {
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage("");
-    try {
+    await runSubmittingAction(async () => {
       await prepareSecondFactor(option);
       setSelectedSecondFactor(option);
       setSecondFactorCode("");
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   const submitSecondFactor = async () => {
@@ -198,29 +606,21 @@ export function AuthForm(props: {
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    try {
+    await runSubmittingAction(async () => {
       const signInAttempt = await signIn.attemptSecondFactor({
         strategy: selectedSecondFactor.strategy,
         code: secondFactorCode.trim(),
       });
 
-      if (signInAttempt.status !== "complete") {
-        throw new Error(getIncompleteSignInMessage(signInAttempt.status));
-      }
+      const sessionId = requireCompletedSession({
+        status: signInAttempt.status,
+        createdSessionId: signInAttempt.createdSessionId,
+        incompleteMessage: getIncompleteSignInMessage(signInAttempt.status),
+        missingSessionMessage: "Sign-in completed without a session.",
+      });
 
-      if (!signInAttempt.createdSessionId) {
-        throw new Error("Sign-in completed without a session.");
-      }
-
-      await setActiveSignIn({ session: signInAttempt.createdSessionId });
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+      await setActiveSignIn({ session: sessionId });
+    });
   };
 
   const submitSignIn = async () => {
@@ -229,10 +629,8 @@ export function AuthForm(props: {
     }
 
     const identifier = email.trim().toLowerCase();
-    setIsSubmitting(true);
-    setErrorMessage("");
 
-    try {
+    await runSubmittingAction(async () => {
       const signInAttempt = await signIn.create({
         strategy: "password",
         identifier,
@@ -244,20 +642,15 @@ export function AuthForm(props: {
         return;
       }
 
-      if (signInAttempt.status !== "complete") {
-        throw new Error(getIncompleteSignInMessage(signInAttempt.status));
-      }
+      const sessionId = requireCompletedSession({
+        status: signInAttempt.status,
+        createdSessionId: signInAttempt.createdSessionId,
+        incompleteMessage: getIncompleteSignInMessage(signInAttempt.status),
+        missingSessionMessage: "Sign-in completed without a session.",
+      });
 
-      if (!signInAttempt.createdSessionId) {
-        throw new Error("Sign-in completed without a session.");
-      }
-
-      await setActiveSignIn({ session: signInAttempt.createdSessionId });
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+      await setActiveSignIn({ session: sessionId });
+    });
   };
 
   const submitSignUp = async () => {
@@ -267,10 +660,7 @@ export function AuthForm(props: {
 
     const emailAddress = email.trim().toLowerCase();
 
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    try {
+    await runSubmittingAction(async () => {
       await signUp.create({
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
@@ -278,13 +668,12 @@ export function AuthForm(props: {
         password,
       });
 
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      await signUp.prepareEmailAddressVerification({
+        strategy: "email_code",
+      });
       setAwaitingVerification(true);
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+      resetSecondFactorState();
+    });
   };
 
   const verifySignUp = async () => {
@@ -292,284 +681,94 @@ export function AuthForm(props: {
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    try {
+    await runSubmittingAction(async () => {
       const verificationAttempt = await signUp.attemptEmailAddressVerification({
         code: verificationCode.trim(),
       });
 
-      if (verificationAttempt.status !== "complete") {
-        throw new Error("Verification code is invalid or expired.");
-      }
+      const sessionId = requireCompletedSession({
+        status: verificationAttempt.status,
+        createdSessionId: verificationAttempt.createdSessionId,
+        incompleteMessage: "Verification code is invalid or expired.",
+        missingSessionMessage: "Verification completed without a session.",
+      });
 
-      if (!verificationAttempt.createdSessionId) {
-        throw new Error("Verification completed without a session.");
-      }
-
-      await setActiveSignUp({ session: verificationAttempt.createdSessionId });
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+      await setActiveSignUp({ session: sessionId });
+    });
   };
 
-  const heading = props.intent === "resolver" ? "Resolver Access Request" : "Reporter Sign In";
+  let stageContent: React.JSX.Element;
+
+  if (stage === "second_factor") {
+    stageContent = (
+      <SecondFactorStep
+        code={secondFactorCode}
+        isSubmitting={isSubmitting}
+        loaded={loaded}
+        options={secondFactorOptions}
+        selectedOption={selectedSecondFactor}
+        onCodeChange={setSecondFactorCode}
+        onSelectOption={(option) => {
+          void selectSecondFactor(option);
+        }}
+        onSubmit={() => {
+          void submitSecondFactor();
+        }}
+      />
+    );
+  } else if (stage === "verification") {
+    stageContent = (
+      <VerificationStep
+        code={verificationCode}
+        isSubmitting={isSubmitting}
+        loaded={loaded}
+        onCodeChange={setVerificationCode}
+        onSubmit={() => {
+          void verifySignUp();
+        }}
+      />
+    );
+  } else {
+    stageContent = (
+      <CredentialsStep
+        email={email}
+        firstName={firstName}
+        isSubmitting={isSubmitting}
+        lastName={lastName}
+        loaded={loaded}
+        mode={mode}
+        password={password}
+        onEmailChange={setEmail}
+        onFirstNameChange={setFirstName}
+        onLastNameChange={setLastName}
+        onModeChange={handleModeChange}
+        onPasswordChange={setPassword}
+        onSubmitSignIn={() => {
+          void submitSignIn();
+        }}
+        onSubmitSignUp={() => {
+          void submitSignUp();
+        }}
+      />
+    );
+  }
 
   return (
     <AppScreen scroll contentContainerStyle={styles.scrollContent}>
       <View style={styles.card}>
-        <Text style={styles.title}>{heading}</Text>
-        <Text style={styles.subtitle}>
-          {props.intent === "resolver"
-            ? "Use your GIU account. Manager approval is required before resolver access is active."
-            : "Sign in with your verified GIU email to report and track issues."}
-        </Text>
+        <Text style={styles.title}>{getAuthHeading(props.intent)}</Text>
+        <Text style={styles.subtitle}>{getAuthSubtitle(props.intent)}</Text>
 
-        <View style={styles.pathRow}>
-          <Pressable
-            onPress={() => {
-              props.onIntentChange("reporter");
-              setAwaitingVerification(false);
-              setAwaitingSecondFactor(false);
-            }}
-            style={[
-              styles.pathChip,
-              props.intent === "reporter" ? styles.pathChipActive : null,
-            ]}
-          >
-            <Text
-              style={[
-                styles.pathChipText,
-                props.intent === "reporter" ? styles.pathChipTextActive : null,
-              ]}
-            >
-              Reporter
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              props.onIntentChange("resolver");
-              setAwaitingVerification(false);
-              setAwaitingSecondFactor(false);
-            }}
-            style={[
-              styles.pathChip,
-              props.intent === "resolver" ? styles.pathChipActive : null,
-            ]}
-          >
-            <Text
-              style={[
-                styles.pathChipText,
-                props.intent === "resolver" ? styles.pathChipTextActive : null,
-              ]}
-            >
-              Resolver
-            </Text>
-          </Pressable>
-        </View>
+        <IntentSelector
+          intent={props.intent}
+          onSelectIntent={handleIntentChange}
+        />
 
-        {awaitingSecondFactor ? (
-          <>
-            <Text style={styles.subtitle}>
-              {selectedSecondFactor
-                ? `Enter ${getSecondFactorLabel(selectedSecondFactor)} to finish sign-in.`
-                : "Enter your second-factor code to finish sign-in."}
-            </Text>
+        {stageContent}
 
-            {secondFactorOptions.length > 1 ? (
-              <View style={styles.pathRow}>
-                {secondFactorOptions.map((option) => (
-                  <Pressable
-                    key={`${option.strategy}-${option.safeIdentifier ?? "default"}`}
-                    onPress={() => {
-                      void selectSecondFactor(option);
-                    }}
-                    style={[
-                      styles.pathChip,
-                      selectedSecondFactor?.strategy === option.strategy
-                        ? styles.pathChipActive
-                        : null,
-                    ]}
-                    disabled={isSubmitting}
-                  >
-                    <Text
-                      style={[
-                        styles.pathChipText,
-                        selectedSecondFactor?.strategy === option.strategy
-                          ? styles.pathChipTextActive
-                          : null,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-
-            <TextInput
-              value={secondFactorCode}
-              onChangeText={setSecondFactorCode}
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="number-pad"
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-              placeholder="Second-factor code"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-
-            <Pressable
-              onPress={submitSecondFactor}
-              disabled={
-                isSubmitting ||
-                !loaded ||
-                !selectedSecondFactor ||
-                secondFactorCode.trim().length === 0
-              }
-              style={[
-                styles.primaryButton,
-                isSubmitting ||
-                !loaded ||
-                !selectedSecondFactor ||
-                secondFactorCode.trim().length === 0
-                  ? styles.disabledButton
-                  : null,
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting ? "Verifying..." : "Verify and sign in"}
-              </Text>
-            </Pressable>
-          </>
-        ) : !awaitingVerification ? (
-          <>
-            <View style={styles.modeRow}>
-              <Pressable
-                onPress={() => {
-                  setMode("sign_in");
-                  setAwaitingSecondFactor(false);
-                  setSecondFactorOptions([]);
-                  setSelectedSecondFactor(null);
-                  setSecondFactorCode("");
-                }}
-                style={styles.modeButton}
-              >
-                <Text style={mode === "sign_in" ? styles.modeTextActive : styles.modeText}>
-                  Sign in
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setMode("sign_up");
-                  setAwaitingSecondFactor(false);
-                  setSecondFactorOptions([]);
-                  setSelectedSecondFactor(null);
-                  setSecondFactorCode("");
-                }}
-                style={styles.modeButton}
-              >
-                <Text style={mode === "sign_up" ? styles.modeTextActive : styles.modeText}>
-                  Sign up
-                </Text>
-              </Pressable>
-            </View>
-
-            {mode === "sign_up" ? (
-              <>
-                <TextInput
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  style={styles.input}
-                  placeholder="First name"
-                  placeholderTextColor={theme.colors.textMuted}
-                  textContentType="givenName"
-                  autoComplete="name-given"
-                />
-                <TextInput
-                  value={lastName}
-                  onChangeText={setLastName}
-                  style={styles.input}
-                  placeholder="Last name"
-                  placeholderTextColor={theme.colors.textMuted}
-                  textContentType="familyName"
-                  autoComplete="name-family"
-                />
-              </>
-            ) : null}
-
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              autoComplete="email"
-              placeholder="Email (@*.giu-uni.de)"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              style={styles.input}
-              secureTextEntry
-              autoCorrect={false}
-              textContentType={mode === "sign_in" ? "password" : "newPassword"}
-              autoComplete={mode === "sign_in" ? "current-password" : "new-password"}
-              placeholder="Password"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-
-            <Pressable
-              onPress={mode === "sign_in" ? submitSignIn : submitSignUp}
-              disabled={isSubmitting || !loaded}
-              style={[styles.primaryButton, isSubmitting || !loaded ? styles.disabledButton : null]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting
-                  ? "Working..."
-                  : mode === "sign_in"
-                    ? "Sign in"
-                    : "Sign up & verify email"}
-              </Text>
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <Text style={styles.subtitle}>Enter the verification code from your GIU inbox.</Text>
-
-            <TextInput
-              value={verificationCode}
-              onChangeText={setVerificationCode}
-              style={styles.input}
-              autoCapitalize="none"
-              keyboardType="number-pad"
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-              placeholder="Verification code"
-              placeholderTextColor={theme.colors.textMuted}
-            />
-
-            <Pressable
-              onPress={verifySignUp}
-              disabled={isSubmitting || !loaded}
-              style={[styles.primaryButton, isSubmitting || !loaded ? styles.disabledButton : null]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSubmitting ? "Verifying..." : "Verify and continue"}
-              </Text>
-            </Pressable>
-          </>
-        )}
-
-        {errorMessage.length > 0 ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {errorMessage.length > 0 ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
 
         <Pressable onPress={props.onBack} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Back</Text>
