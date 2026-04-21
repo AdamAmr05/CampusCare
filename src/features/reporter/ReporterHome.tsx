@@ -26,6 +26,405 @@ import { ReporterTicketCard } from "./ReporterTicketCard";
 import { ReporterTicketDetailsModal } from "./ReporterTicketDetailsModal";
 import { styles } from "./ReporterHome.styles";
 
+type ReporterWorkspaceHeroProps = {
+  email: string;
+  onSignOut: () => void;
+  onSwitchToResolver?: () => void;
+};
+
+type ReporterTicketComposerProps = {
+  category: string;
+  description: string;
+  errorMessage: string;
+  imageSelectionDisabled: boolean;
+  imageSelectionSource: TicketImageSource | null;
+  selectedImage: TicketImageAsset | null;
+  selectedRoom: RoomOption | null;
+  submitting: boolean;
+  onCategoryChange: (value: string) => void;
+  onClearRoomSelection: () => void;
+  onDescriptionChange: (value: string) => void;
+  onOpenImage: (imageUri: string) => void;
+  onOpenRoomSelector: () => void;
+  onSelectImageSource: (source: TicketImageSource) => void;
+  onSubmit: () => void;
+};
+
+type ReporterImageSourceButtonsProps = {
+  imageSelectionDisabled: boolean;
+  imageSelectionSource: TicketImageSource | null;
+  onSelectImageSource: (source: TicketImageSource) => void;
+};
+
+type ReporterRoomSelectorProps = {
+  availableFloors: string[];
+  filteredRoomOptions: RoomOption[];
+  onClose: () => void;
+  onSearchQueryChange: (value: string) => void;
+  onSelectBuilding: (building: string | null) => void;
+  onSelectFloor: (floor: string | null) => void;
+  onSelectRoom: (room: RoomOption) => void;
+  roomSearchQuery: string;
+  selectedBuilding: string | null;
+  selectedFloor: string | null;
+  selectedRoomCode: string;
+  visible: boolean;
+};
+
+type ReporterLoadMoreFooterProps = {
+  canLoadMore: boolean;
+  onLoadMore: () => void;
+};
+
+function ReporterWorkspaceHero({
+  email,
+  onSignOut,
+  onSwitchToResolver,
+}: ReporterWorkspaceHeroProps): React.JSX.Element {
+  return (
+    <View style={styles.heroCard}>
+      <View style={styles.headerRow}>
+        <View style={styles.headerMeta}>
+          <Text style={styles.eyebrow}>Reporter Workspace</Text>
+          <Text style={styles.title}>Create and Track Tickets</Text>
+          <Text style={styles.subtitle}>
+            White mode with German palette: bold black primary, yellow secondary,
+            red accents.
+          </Text>
+          <Text style={styles.signedInText}>{email}</Text>
+        </View>
+        <View style={styles.headerActions}>
+          {onSwitchToResolver ? (
+            <Pressable onPress={onSwitchToResolver} style={styles.workspaceButton}>
+              <Text style={styles.workspaceButtonText}>Go Resolver</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={onSignOut} style={styles.signOutButton}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ReporterTicketComposer({
+  category,
+  description,
+  errorMessage,
+  imageSelectionDisabled,
+  imageSelectionSource,
+  selectedImage,
+  selectedRoom,
+  submitting,
+  onCategoryChange,
+  onClearRoomSelection,
+  onDescriptionChange,
+  onOpenImage,
+  onOpenRoomSelector,
+  onSelectImageSource,
+  onSubmit,
+}: ReporterTicketComposerProps): React.JSX.Element {
+  return (
+    <View style={styles.formCard}>
+      <Text style={styles.sectionTitle}>New Ticket</Text>
+      <TextInput
+        value={category}
+        onChangeText={onCategoryChange}
+        style={styles.input}
+        placeholder="Category (e.g. Electrical)"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+      <Pressable onPress={onOpenRoomSelector} style={styles.selectorInput}>
+        <View style={styles.selectorInputRow}>
+          <Text
+            style={selectedRoom ? styles.selectorValueText : styles.selectorPlaceholderText}
+            numberOfLines={1}
+          >
+            {selectedRoom ? selectedRoom.code : "Select room (building -> floor -> room)"}
+          </Text>
+          <Text style={styles.selectorActionText}>Open</Text>
+        </View>
+      </Pressable>
+      {selectedRoom ? (
+        <View style={styles.selectedRoomMetaRow}>
+          <Text style={styles.selectedRoomMetaText}>
+            Building {selectedRoom.building}
+            {selectedRoom.floor ? ` • Floor ${selectedRoom.floor}` : ""}
+          </Text>
+          <Pressable onPress={onClearRoomSelection} hitSlop={6}>
+            <Text style={styles.clearRoomText}>Clear</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <TextInput
+        value={description}
+        onChangeText={onDescriptionChange}
+        style={[styles.input, styles.descriptionInput]}
+        placeholder="Describe the issue briefly"
+        placeholderTextColor={theme.colors.textMuted}
+        multiline
+      />
+
+      <ReporterImageSourceButtons
+        imageSelectionDisabled={imageSelectionDisabled}
+        imageSelectionSource={imageSelectionSource}
+        onSelectImageSource={onSelectImageSource}
+      />
+
+      {selectedImage ? (
+        <TicketImagePreview
+          uri={selectedImage.uri}
+          style={styles.imagePreview}
+          onPress={() => onOpenImage(selectedImage.uri)}
+        />
+      ) : null}
+
+      <Pressable
+        onPress={onSubmit}
+        disabled={submitting}
+        style={[styles.primaryButton, submitting ? styles.buttonDisabled : null]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {submitting ? "Submitting..." : "Submit Ticket"}
+        </Text>
+      </Pressable>
+
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+    </View>
+  );
+}
+
+function ReporterImageSourceButtons({
+  imageSelectionDisabled,
+  imageSelectionSource,
+  onSelectImageSource,
+}: ReporterImageSourceButtonsProps): React.JSX.Element {
+  return (
+    <View style={styles.imageActionRow}>
+      <Pressable
+        onPress={() => onSelectImageSource("camera")}
+        disabled={imageSelectionDisabled}
+        style={[
+          styles.secondaryButton,
+          styles.imageActionButton,
+          imageSelectionDisabled ? styles.buttonDisabled : null,
+        ]}
+      >
+        <Text style={styles.secondaryButtonText}>
+          {imageSelectionSource === "camera" ? "Opening..." : "Take Photo"}
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => onSelectImageSource("library")}
+        disabled={imageSelectionDisabled}
+        style={[
+          styles.secondaryButton,
+          styles.imageActionButton,
+          imageSelectionDisabled ? styles.buttonDisabled : null,
+        ]}
+      >
+        <Text style={styles.secondaryButtonText}>
+          {imageSelectionSource === "library" ? "Opening..." : "Choose Library"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ReporterLoadMoreFooter({
+  canLoadMore,
+  onLoadMore,
+}: ReporterLoadMoreFooterProps): React.JSX.Element {
+  return (
+    <View style={styles.footerSpace}>
+      {canLoadMore ? (
+        <Pressable onPress={onLoadMore} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Load More</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function ReporterRoomSelector({
+  availableFloors,
+  filteredRoomOptions,
+  onClose,
+  onSearchQueryChange,
+  onSelectBuilding,
+  onSelectFloor,
+  onSelectRoom,
+  roomSearchQuery,
+  selectedBuilding,
+  selectedFloor,
+  selectedRoomCode,
+  visible,
+}: ReporterRoomSelectorProps): React.JSX.Element {
+  const isAndroid = Platform.OS === "android";
+  const roomSelectorSheet = (
+    <View style={styles.roomSelectorScreen}>
+      <View style={styles.roomSelectorHeader}>
+        <Text style={styles.modalTitle}>Select Room</Text>
+        <Pressable onPress={onClose} style={styles.modalCloseButton}>
+          <Text style={styles.modalCloseButtonText}>Close</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.roomSelectorContent}>
+        <TextInput
+          value={roomSearchQuery}
+          onChangeText={onSearchQueryChange}
+          style={styles.input}
+          placeholder="Search room code (e.g. S2.015)"
+          placeholderTextColor={theme.colors.textMuted}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
+
+        <Text style={styles.filterLabel}>Building</Text>
+        <View style={styles.chipGrid}>
+          <Pressable
+            onPress={() => onSelectBuilding(null)}
+            style={[
+              styles.filterChip,
+              selectedBuilding === null ? styles.filterChipActive : null,
+            ]}
+          >
+            <Text
+              maxFontSizeMultiplier={1.2}
+              style={[
+                styles.filterChipText,
+                selectedBuilding === null ? styles.filterChipTextActive : null,
+              ]}
+            >
+              All
+            </Text>
+          </Pressable>
+          {roomDirectory.buildings.map((building) => (
+            <Pressable
+              key={building}
+              onPress={() => onSelectBuilding(building)}
+              style={[
+                styles.filterChip,
+                selectedBuilding === building ? styles.filterChipActive : null,
+              ]}
+            >
+              <Text
+                maxFontSizeMultiplier={1.2}
+                style={[
+                  styles.filterChipText,
+                  selectedBuilding === building ? styles.filterChipTextActive : null,
+                ]}
+              >
+                {building}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {selectedBuilding ? (
+          <>
+            <Text style={styles.filterLabel}>Floor (optional)</Text>
+            <View style={styles.chipGrid}>
+              <Pressable
+                onPress={() => onSelectFloor(null)}
+                style={[
+                  styles.filterChip,
+                  styles.filterChipWide,
+                  selectedFloor === null ? styles.filterChipActive : null,
+                ]}
+              >
+                <Text
+                  maxFontSizeMultiplier={1.2}
+                  style={[
+                    styles.filterChipText,
+                    selectedFloor === null ? styles.filterChipTextActive : null,
+                  ]}
+                >
+                  All Floors
+                </Text>
+              </Pressable>
+              {availableFloors.map((floor) => (
+                <Pressable
+                  key={floor}
+                  onPress={() => onSelectFloor(floor)}
+                  style={[
+                    styles.filterChip,
+                    selectedFloor === floor ? styles.filterChipActive : null,
+                  ]}
+                >
+                  <Text
+                    maxFontSizeMultiplier={1.2}
+                    style={[
+                      styles.filterChipText,
+                      selectedFloor === floor ? styles.filterChipTextActive : null,
+                    ]}
+                  >
+                    Floor {floor}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        <Text style={styles.selectorResultsText}>
+          Showing {filteredRoomOptions.length} room
+          {filteredRoomOptions.length === 1 ? "" : "s"}
+        </Text>
+
+        <FlatList
+          data={filteredRoomOptions}
+          keyExtractor={(item) => item.code}
+          contentContainerStyle={styles.roomList}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => onSelectRoom(item)}
+              style={[
+                styles.roomListItem,
+                selectedRoomCode === item.code ? styles.roomListItemActive : null,
+              ]}
+            >
+              <Text style={styles.roomCodeText}>{item.code}</Text>
+              <Text style={styles.roomMetaText}>
+                Building {item.building}
+                {item.floor ? ` • Floor ${item.floor}` : ""}
+              </Text>
+            </Pressable>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              No rooms match this filter. Change building/floor or search text.
+            </Text>
+          }
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <Modal
+      animationType={isAndroid ? "fade" : "slide"}
+      visible={visible}
+      onRequestClose={onClose}
+      presentationStyle={isAndroid ? "fullScreen" : "pageSheet"}
+      transparent={isAndroid}
+      statusBarTranslucent={isAndroid}
+    >
+      {isAndroid ? (
+        <View style={styles.androidSheetOverlay}>
+          <Pressable style={styles.androidSheetBackdrop} onPress={onClose} />
+          <View style={styles.androidSheetCard}>{roomSelectorSheet}</View>
+        </View>
+      ) : (
+        roomSelectorSheet
+      )}
+    </Modal>
+  );
+}
+
 export function ReporterHome(props: {
   email: string;
   onSignOut: () => void;
@@ -237,295 +636,46 @@ export function ReporterHome(props: {
 
   const renderTicket = useCallback(
     ({ item }: { item: Ticket }) => (
-      <ReporterTicketCard ticket={item} onOpenDetails={openTicketDetails} onOpenImage={openLightbox} />
+      <ReporterTicketCard
+        ticket={item}
+        onOpenDetails={openTicketDetails}
+        onOpenImage={openLightbox}
+      />
     ),
     [openLightbox, openTicketDetails],
   );
 
   const keyExtractor = useCallback((item: Ticket) => item._id, []);
-
-  const listHeader = useMemo(
-    () => (
-      <View style={styles.listHeader}>
-        <View style={styles.heroCard}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerMeta}>
-              <Text style={styles.eyebrow}>Reporter Workspace</Text>
-              <Text style={styles.title}>Create and Track Tickets</Text>
-              <Text style={styles.subtitle}>
-                White mode with German palette: bold black primary, yellow secondary, red accents.
-              </Text>
-              <Text style={styles.signedInText}>{props.email}</Text>
-            </View>
-            <View style={styles.headerActions}>
-              {props.onSwitchToResolver ? (
-                <Pressable onPress={props.onSwitchToResolver} style={styles.workspaceButton}>
-                  <Text style={styles.workspaceButtonText}>Go Resolver</Text>
-                </Pressable>
-              ) : null}
-              <Pressable onPress={props.onSignOut} style={styles.signOutButton}>
-                <Text style={styles.signOutText}>Sign out</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <NotificationCenter />
-
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>New Ticket</Text>
-          <TextInput
-            value={category}
-            onChangeText={setCategory}
-            style={styles.input}
-            placeholder="Category (e.g. Electrical)"
-            placeholderTextColor={theme.colors.textMuted}
-          />
-          <Pressable onPress={openRoomSelector} style={styles.selectorInput}>
-            <View style={styles.selectorInputRow}>
-              <Text
-                style={selectedRoom ? styles.selectorValueText : styles.selectorPlaceholderText}
-                numberOfLines={1}
-              >
-                {selectedRoom ? selectedRoom.code : "Select room (building -> floor -> room)"}
-              </Text>
-              <Text style={styles.selectorActionText}>Open</Text>
-            </View>
-          </Pressable>
-          {selectedRoom ? (
-            <View style={styles.selectedRoomMetaRow}>
-              <Text style={styles.selectedRoomMetaText}>
-                Building {selectedRoom.building}
-                {selectedRoom.floor ? ` • Floor ${selectedRoom.floor}` : ""}
-              </Text>
-              <Pressable onPress={clearRoomSelection} hitSlop={6}>
-                <Text style={styles.clearRoomText}>Clear</Text>
-              </Pressable>
-            </View>
-          ) : null}
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            style={[styles.input, styles.descriptionInput]}
-            placeholder="Describe the issue briefly"
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-          />
-
-          <View style={styles.imageActionRow}>
-            <Pressable
-              onPress={() => void onSelectImageSource("camera")}
-              disabled={imageSelectionDisabled}
-              style={[
-                styles.secondaryButton,
-                styles.imageActionButton,
-                imageSelectionDisabled ? styles.buttonDisabled : null,
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {imageSelectionSource === "camera" ? "Opening..." : "Take Photo"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void onSelectImageSource("library")}
-              disabled={imageSelectionDisabled}
-              style={[
-                styles.secondaryButton,
-                styles.imageActionButton,
-                imageSelectionDisabled ? styles.buttonDisabled : null,
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {imageSelectionSource === "library" ? "Opening..." : "Choose Library"}
-              </Text>
-            </Pressable>
-          </View>
-
-          {selectedImage ? (
-            <TicketImagePreview
-              uri={selectedImage.uri}
-              style={styles.imagePreview}
-              onPress={() => openLightbox(selectedImage.uri)}
-            />
-          ) : null}
-
-          <Pressable
-            onPress={() => void submitTicket()}
-            disabled={submitting}
-            style={[styles.primaryButton, submitting ? styles.buttonDisabled : null]}
-          >
-            <Text style={styles.primaryButtonText}>{submitting ? "Submitting..." : "Submit Ticket"}</Text>
-          </Pressable>
-
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-        </View>
-
-        <Text style={styles.sectionTitle}>My Tickets</Text>
-      </View>
-    ),
-    [
-      category,
-      clearRoomSelection,
-      description,
-      errorMessage,
-      imageSelectionDisabled,
-      imageSelectionSource,
-      onSelectImageSource,
-      openLightbox,
-      openRoomSelector,
-      props.email,
-      props.onSignOut,
-      props.onSwitchToResolver,
-      selectedImage,
-      selectedRoom,
-      submitTicket,
-      submitting,
-    ],
-  );
-
-  const listFooter = useMemo(
-    () => (
-      <View style={styles.footerSpace}>
-        {status === "CanLoadMore" ? (
-          <Pressable onPress={() => loadMore(10)} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Load More</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    ),
-    [loadMore, status],
-  );
-
-  const isAndroid = Platform.OS === "android";
-  const roomSelectorSheet = (
-    <View style={styles.roomSelectorScreen}>
-      <View style={styles.roomSelectorHeader}>
-        <Text style={styles.modalTitle}>Select Room</Text>
-        <Pressable onPress={closeRoomSelector} style={styles.modalCloseButton}>
-          <Text style={styles.modalCloseButtonText}>Close</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.roomSelectorContent}>
-        <TextInput
-          value={roomSearchQuery}
-          onChangeText={setRoomSearchQuery}
-          style={styles.input}
-          placeholder="Search room code (e.g. S2.015)"
-          placeholderTextColor={theme.colors.textMuted}
-          autoCapitalize="characters"
-          autoCorrect={false}
-        />
-
-        <Text style={styles.filterLabel}>Building</Text>
-        <View style={styles.chipGrid}>
-          <Pressable
-            onPress={() => selectBuilding(null)}
-            style={[styles.filterChip, selectedBuilding === null ? styles.filterChipActive : null]}
-          >
-            <Text
-              maxFontSizeMultiplier={1.2}
-              style={[
-                styles.filterChipText,
-                selectedBuilding === null ? styles.filterChipTextActive : null,
-              ]}
-            >
-              All
-            </Text>
-          </Pressable>
-          {roomDirectory.buildings.map((building) => (
-            <Pressable
-              key={building}
-              onPress={() => selectBuilding(building)}
-              style={[styles.filterChip, selectedBuilding === building ? styles.filterChipActive : null]}
-            >
-              <Text
-                maxFontSizeMultiplier={1.2}
-                style={[
-                  styles.filterChipText,
-                  selectedBuilding === building ? styles.filterChipTextActive : null,
-                ]}
-              >
-                {building}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {selectedBuilding ? (
-          <>
-            <Text style={styles.filterLabel}>Floor (optional)</Text>
-            <View style={styles.chipGrid}>
-              <Pressable
-                onPress={() => selectFloor(null)}
-                style={[
-                  styles.filterChip,
-                  styles.filterChipWide,
-                  selectedFloor === null ? styles.filterChipActive : null,
-                ]}
-              >
-                <Text
-                  maxFontSizeMultiplier={1.2}
-                  style={[
-                    styles.filterChipText,
-                    selectedFloor === null ? styles.filterChipTextActive : null,
-                  ]}
-                >
-                  All Floors
-                </Text>
-              </Pressable>
-              {availableFloors.map((floor) => (
-                <Pressable
-                  key={floor}
-                  onPress={() => selectFloor(floor)}
-                  style={[styles.filterChip, selectedFloor === floor ? styles.filterChipActive : null]}
-                >
-                  <Text
-                    maxFontSizeMultiplier={1.2}
-                    style={[
-                      styles.filterChipText,
-                      selectedFloor === floor ? styles.filterChipTextActive : null,
-                    ]}
-                  >
-                    Floor {floor}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
-        ) : null}
-
-        <Text style={styles.selectorResultsText}>
-          Showing {filteredRoomOptions.length} room{filteredRoomOptions.length === 1 ? "" : "s"}
-        </Text>
-
-        <FlatList
-          data={filteredRoomOptions}
-          keyExtractor={(item) => item.code}
-          contentContainerStyle={styles.roomList}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => handleSelectRoom(item)}
-              style={[
-                styles.roomListItem,
-                selectedRoomCode === item.code ? styles.roomListItemActive : null,
-              ]}
-            >
-              <Text style={styles.roomCodeText}>{item.code}</Text>
-              <Text style={styles.roomMetaText}>
-                Building {item.building}
-                {item.floor ? ` • Floor ${item.floor}` : ""}
-              </Text>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              No rooms match this filter. Change building/floor or search text.
-            </Text>
-          }
-        />
-      </View>
+  const listHeader = (
+    <View style={styles.listHeader}>
+      <ReporterWorkspaceHero
+        email={props.email}
+        onSignOut={props.onSignOut}
+        onSwitchToResolver={props.onSwitchToResolver}
+      />
+      <NotificationCenter />
+      <ReporterTicketComposer
+        category={category}
+        description={description}
+        errorMessage={errorMessage}
+        imageSelectionDisabled={imageSelectionDisabled}
+        imageSelectionSource={imageSelectionSource}
+        selectedImage={selectedImage}
+        selectedRoom={selectedRoom}
+        submitting={submitting}
+        onCategoryChange={setCategory}
+        onClearRoomSelection={clearRoomSelection}
+        onDescriptionChange={setDescription}
+        onOpenImage={openLightbox}
+        onOpenRoomSelector={openRoomSelector}
+        onSelectImageSource={(source) => {
+          void onSelectImageSource(source);
+        }}
+        onSubmit={() => {
+          void submitTicket();
+        }}
+      />
+      <Text style={styles.sectionTitle}>My Tickets</Text>
     </View>
   );
 
@@ -539,7 +689,12 @@ export function ReporterHome(props: {
         ListEmptyComponent={<Text style={styles.emptyText}>No tickets yet. Submit your first issue.</Text>}
         contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
         showsVerticalScrollIndicator={false}
-        ListFooterComponent={listFooter}
+        ListFooterComponent={
+          <ReporterLoadMoreFooter
+            canLoadMore={status === "CanLoadMore"}
+            onLoadMore={() => loadMore(10)}
+          />
+        }
         removeClippedSubviews={Platform.OS === "android"}
         initialNumToRender={8}
         maxToRenderPerBatch={8}
@@ -547,23 +702,20 @@ export function ReporterHome(props: {
         updateCellsBatchingPeriod={50}
       />
 
-      <Modal
-        animationType={isAndroid ? "fade" : "slide"}
+      <ReporterRoomSelector
+        availableFloors={availableFloors}
+        filteredRoomOptions={filteredRoomOptions}
+        onClose={closeRoomSelector}
+        onSearchQueryChange={setRoomSearchQuery}
+        onSelectBuilding={selectBuilding}
+        onSelectFloor={selectFloor}
+        onSelectRoom={handleSelectRoom}
+        roomSearchQuery={roomSearchQuery}
+        selectedBuilding={selectedBuilding}
+        selectedFloor={selectedFloor}
+        selectedRoomCode={selectedRoomCode}
         visible={isRoomSelectorVisible}
-        onRequestClose={closeRoomSelector}
-        presentationStyle={isAndroid ? "fullScreen" : "pageSheet"}
-        transparent={isAndroid}
-        statusBarTranslucent={isAndroid}
-      >
-        {isAndroid ? (
-          <View style={styles.androidSheetOverlay}>
-            <Pressable style={styles.androidSheetBackdrop} onPress={closeRoomSelector} />
-            <View style={styles.androidSheetCard}>{roomSelectorSheet}</View>
-          </View>
-        ) : (
-          roomSelectorSheet
-        )}
-      </Modal>
+      />
 
       <ReporterTicketDetailsModal
         visible={isDetailsVisible}
