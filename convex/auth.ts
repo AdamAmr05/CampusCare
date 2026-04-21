@@ -21,6 +21,11 @@ import {
   listActiveManagerUserIds,
   truncateNotificationText,
 } from "./lib/notifications";
+import {
+  buildUserPatch,
+  resolveExistingAccess,
+  resolveNewAccess,
+} from "./lib/accessTransitions";
 
 type ReaderCtx = QueryCtx | MutationCtx;
 
@@ -118,6 +123,20 @@ async function buildAccessSummary(ctx: ReaderCtx, userId: Id<"users">) {
   };
 }
 
+async function buildRequiredAccessSummary(
+  ctx: ReaderCtx,
+  userId: Id<"users">,
+  errorMessage: string,
+) {
+  const summary = await buildAccessSummary(ctx, userId);
+
+  if (!summary) {
+    throw new ConvexError(errorMessage);
+  }
+
+  return summary;
+}
+
 export const upsertCurrentUser = mutation({
   args: {
     intent: onboardingIntentValidator,
@@ -128,114 +147,69 @@ export const upsertCurrentUser = mutation({
     const email = requireVerifiedGiuEmail(identity);
     const fullName = getDisplayName(identity, email);
     const now = Date.now();
-
     const managerAccount = isManagerEmail(email);
-
     const existingUser = await getCurrentUserByTokenIdentifier(ctx, identity.tokenIdentifier);
-
-    let userId = existingUser?._id ?? null;
+    const profile = { email, fullName };
 
     if (!existingUser) {
-      const role = managerAccount ? "manager" : "reporter";
-      const accountStatus = managerAccount
-        ? "active"
-        : args.intent === "resolver"
-          ? "pending_resolver_approval"
-          : "active";
-
-      userId = await ctx.db.insert("users", {
+      const accessDecision = resolveNewAccess(args.intent, managerAccount);
+      const userId = await ctx.db.insert("users", {
         tokenIdentifier: identity.tokenIdentifier,
-        email,
-        fullName,
-        role,
-        accountStatus,
+        email: profile.email,
+        fullName: profile.fullName,
+        role: accessDecision.role,
+        accountStatus: accessDecision.accountStatus,
         createdAt: now,
         updatedAt: now,
       });
 
-      if (!managerAccount && args.intent === "resolver") {
+      if (accessDecision.shouldCreateResolverRequest) {
         await ensurePendingResolverRequest(ctx, {
           requesterUserId: userId,
-          requesterEmail: email,
-          requesterName: fullName,
+          requesterEmail: profile.email,
+          requesterName: profile.fullName,
           reason: null,
         });
       }
 
-      const summary = await buildAccessSummary(ctx, userId);
-      if (!summary) {
-        throw new ConvexError("Failed to build access summary after user creation.");
-      }
-
-      return summary;
+      return await buildRequiredAccessSummary(
+        ctx,
+        userId,
+        "Failed to build access summary after user creation.",
+      );
     }
 
-    let nextRole = existingUser.role;
-    let nextAccountStatus = existingUser.accountStatus;
+    const accessDecision = resolveExistingAccess({
+      current: existingUser,
+      intent: args.intent,
+      managerAccount,
+    });
 
-    if (managerAccount) {
-      nextRole = "manager";
-      nextAccountStatus = "active";
-    } else if (existingUser.role === "manager") {
-      // Manager role is sourced from MANAGER_EMAIL_ALLOWLIST, so revoke it when removed.
-      nextRole = "reporter";
-      nextAccountStatus = args.intent === "resolver" ? "pending_resolver_approval" : "active";
-    } else if (args.intent === "resolver" && existingUser.role !== "resolver") {
-      // Rejected users must explicitly trigger reapply via resolverRequests.reapply.
-      if (existingUser.accountStatus === "resolver_rejected") {
-        nextRole = "reporter";
-        nextAccountStatus = "resolver_rejected";
-      } else {
-        nextRole = "reporter";
-        nextAccountStatus = "pending_resolver_approval";
-      }
-    } else if (
-      args.intent === "reporter" &&
-      existingUser.role !== "resolver" &&
-      (existingUser.accountStatus === "resolver_rejected" ||
-        existingUser.accountStatus === "pending_resolver_approval")
-    ) {
-      // Reporter path should restore reporter access after rejected/pending resolver state.
-      nextRole = "reporter";
-      nextAccountStatus = "active";
+    const userPatch = buildUserPatch({
+      current: existingUser,
+      next: accessDecision,
+      profile,
+      now,
+    });
+
+    if (userPatch) {
+      await ctx.db.patch(existingUser._id, userPatch);
     }
 
-    const shouldPatch =
-      nextRole !== existingUser.role ||
-      nextAccountStatus !== existingUser.accountStatus ||
-      existingUser.email !== email ||
-      existingUser.fullName !== fullName;
-
-    if (shouldPatch) {
-      await ctx.db.patch(existingUser._id, {
-        role: nextRole,
-        accountStatus: nextAccountStatus,
-        email,
-        fullName,
-        updatedAt: now,
-      });
-    }
-
-    if (
-      !managerAccount &&
-      args.intent === "resolver" &&
-      nextRole !== "resolver" &&
-      nextAccountStatus === "pending_resolver_approval"
-    ) {
+    if (accessDecision.shouldCreateResolverRequest) {
       await ensurePendingResolverRequest(ctx, {
         requesterUserId: existingUser._id,
-        requesterEmail: email,
-        requesterName: fullName,
+        requesterEmail: profile.email,
+        requesterName: profile.fullName,
         reason: null,
       });
     }
 
-    const summary = await buildAccessSummary(ctx, existingUser._id);
-    if (!summary) {
-      throw new ConvexError("Failed to build access summary after user update.");
-    }
-
-    return summary;
+    return await buildRequiredAccessSummary(
+      ctx,
+      existingUser._id,
+      "Failed to build access summary after user update.",
+    );
   },
 });
 
