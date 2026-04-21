@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  Text,
+  TextInput,
+  type StyleProp,
+  type ViewStyle,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -8,8 +16,17 @@ import type { ResolverRequest } from "../auth/types";
 import { ImageLightbox } from "../tickets/ImageLightbox";
 import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
-import type { ResolverOption, Ticket, TicketWithHistory } from "../tickets/types";
-import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
+import type {
+  ResolverOption,
+  Ticket,
+  TicketWithHistory,
+} from "../tickets/types";
+import {
+  formatTimestamp,
+  getTicketStatusColors,
+  getTicketStatusLabel,
+  truncateText,
+} from "../tickets/utils";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
@@ -18,395 +35,113 @@ import { styles } from "./ManagerHome.styles";
 
 type ManagerTab = "resolver_requests" | "assign_tickets" | "close_tickets";
 
-export function ManagerHome(props: { email: string; onSignOut: () => void }): React.JSX.Element {
-  const insets = useSafeAreaInsets();
-  const approveRequest = useMutation(api.resolverRequests.approve);
-  const rejectRequest = useMutation(api.resolverRequests.reject);
-  const assignResolver = useMutation(api.ticketsManager.assignResolver);
-  const closeTicket = useMutation(api.ticketsManager.close);
+type ManagerHeaderProps = {
+  activeTab: ManagerTab;
+  email: string;
+  errorMessage: string;
+  onSelectTab: (tab: ManagerTab) => void;
+  onSignOut: () => void;
+};
 
-  const resolverRequestsQuery = usePaginatedQuery(
-    api.resolverRequests.listPending,
-    {},
-    { initialNumItems: 10 },
-  );
+type ResolverRequestCardProps = {
+  isProcessing: boolean;
+  note: string;
+  request: ResolverRequest;
+  onApprove: () => void;
+  onNoteChange: (value: string) => void;
+  onReject: () => void;
+};
 
-  const openTicketsQuery = usePaginatedQuery(
-    api.ticketsManager.listOpenUnassigned,
-    {},
-    { initialNumItems: 10 },
-  );
+type OpenTicketAssignmentCardProps = {
+  activeResolvers: ResolverOption[];
+  isProcessing: boolean;
+  note: string;
+  selectedResolverId: string;
+  ticket: Ticket;
+  onNoteChange: (value: string) => void;
+  onOpenDetails: () => void;
+  onOpenImage: (imageUri: string) => void;
+  onSelectResolver: (resolverId: string) => void;
+  onSubmit: () => void;
+};
 
-  const resolvedTicketsQuery = usePaginatedQuery(
-    api.ticketsManager.listResolvedAwaitingClose,
-    {},
-    { initialNumItems: 10 },
-  );
+type ResolvedTicketClosureCardProps = {
+  isProcessing: boolean;
+  note: string;
+  ticket: Ticket;
+  onNoteChange: (value: string) => void;
+  onOpenDetails: () => void;
+  onOpenImage: (imageUri: string) => void;
+  onSubmit: () => void;
+};
 
-  const activeResolvers = useQuery(api.ticketsManager.listActiveResolvers, {}) as
-    | ResolverOption[]
-    | undefined;
+type ManagerTabPanelProps = {
+  activeTab: ManagerTab;
+  contentContainerStyle: StyleProp<ViewStyle>;
+  header: React.JSX.Element;
+  onLoadMore: () => void;
+  openTickets: Ticket[];
+  pendingRequests: ResolverRequest[];
+  renderOpenTicket: ({ item }: { item: Ticket }) => React.JSX.Element;
+  renderResolvedTicket: ({ item }: { item: Ticket }) => React.JSX.Element;
+  renderResolverRequest: ({
+    item,
+  }: {
+    item: ResolverRequest;
+  }) => React.JSX.Element;
+  resolvedTickets: Ticket[];
+  showLoadMore: boolean;
+};
 
-  const [activeTab, setActiveTab] = useState<ManagerTab>("resolver_requests");
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
-  const [selectedResolverByTicket, setSelectedResolverByTicket] = useState<Record<string, string>>(
-    {},
-  );
-  const [assignmentNotes, setAssignmentNotes] = useState<Record<string, string>>({});
-  const [closureNotes, setClosureNotes] = useState<Record<string, string>>({});
-  const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
-  const [selectedTicketId, setSelectedTicketId] = useState<Id<"tickets"> | null>(null);
-  const [selectedTicketPreview, setSelectedTicketPreview] = useState<Ticket | null>(null);
-  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
-  const selectedTicket = useQuery(
-    api.ticketsShared.getById,
-    isDetailsVisible && selectedTicketId ? { ticketId: selectedTicketId } : "skip",
-  ) as TicketWithHistory | null | undefined;
+function createAssignResolverArgs(
+  ticketId: Id<"tickets">,
+  resolverUserId: Id<"users">,
+  note: string,
+) {
+  if (note.length === 0) {
+    return {
+      ticketId,
+      resolverUserId,
+    };
+  }
 
-  const pendingRequests = useMemo(
-    () => resolverRequestsQuery.results as ResolverRequest[],
-    [resolverRequestsQuery.results],
-  );
-  const openTickets = useMemo(() => openTicketsQuery.results as Ticket[], [openTicketsQuery.results]);
-  const resolvedTickets = useMemo(
-    () => resolvedTicketsQuery.results as Ticket[],
-    [resolvedTicketsQuery.results],
-  );
+  return {
+    ticketId,
+    resolverUserId,
+    note,
+  };
+}
 
-  const onApprove = useCallback(async (requestId: Id<"resolver_requests">) => {
-    setProcessingId(requestId);
-    setErrorMessage("");
+function createCloseTicketArgs(ticketId: Id<"tickets">, note: string) {
+  if (note.length === 0) {
+    return { ticketId };
+  }
 
-    try {
-      await approveRequest({ requestId });
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setProcessingId(null);
-    }
-  }, [approveRequest]);
+  return {
+    ticketId,
+    note,
+  };
+}
 
-  const onReject = useCallback(async (requestId: Id<"resolver_requests">) => {
-    const note = (decisionNotes[requestId] ?? "").trim();
-    if (!note) {
-      setErrorMessage("Decision note is required before rejecting a request.");
-      return;
-    }
+function getManagerEmptyMessage(activeTab: ManagerTab): string {
+  switch (activeTab) {
+    case "resolver_requests":
+      return "No pending resolver requests.";
+    case "assign_tickets":
+      return "No open tickets awaiting assignment.";
+    case "close_tickets":
+      return "No resolved tickets awaiting closure.";
+  }
+}
 
-    setProcessingId(requestId);
-    setErrorMessage("");
-
-    try {
-      await rejectRequest({ requestId, decisionNote: note });
-      setDecisionNotes((previous) => ({ ...previous, [requestId]: "" }));
-    } catch (error) {
-      setErrorMessage(formatError(error));
-    } finally {
-      setProcessingId(null);
-    }
-  }, [decisionNotes, rejectRequest]);
-
-  const onAssignResolver = useCallback(
-    async (ticket: Ticket) => {
-      const selectedResolverId =
-        selectedResolverByTicket[ticket._id] ?? activeResolvers?.[0]?._id ?? null;
-      if (!selectedResolverId) {
-        setErrorMessage("No active resolver available for assignment.");
-        return;
-      }
-
-      const note = (assignmentNotes[ticket._id] ?? "").trim();
-      setProcessingId(ticket._id);
-      setErrorMessage("");
-
-      try {
-        if (note.length > 0) {
-          await assignResolver({
-            ticketId: ticket._id,
-            resolverUserId: selectedResolverId as Id<"users">,
-            note,
-          });
-        } else {
-          await assignResolver({
-            ticketId: ticket._id,
-            resolverUserId: selectedResolverId as Id<"users">,
-          });
-        }
-      } catch (error) {
-        setErrorMessage(formatError(error));
-      } finally {
-        setProcessingId(null);
-      }
-    },
-    [activeResolvers, assignmentNotes, assignResolver, selectedResolverByTicket],
-  );
-
-  const onCloseTicket = useCallback(
-    async (ticket: Ticket) => {
-      const note = (closureNotes[ticket._id] ?? "").trim();
-      setProcessingId(ticket._id);
-      setErrorMessage("");
-
-      try {
-        if (note.length > 0) {
-          await closeTicket({ ticketId: ticket._id, note });
-        } else {
-          await closeTicket({ ticketId: ticket._id });
-        }
-      } catch (error) {
-        setErrorMessage(formatError(error));
-      } finally {
-        setProcessingId(null);
-      }
-    },
-    [closeTicket, closureNotes],
-  );
-
-  const openTicketDetails = useCallback((ticket: Ticket) => {
-    setSelectedTicketId(ticket._id);
-    setSelectedTicketPreview(ticket);
-    setIsDetailsVisible(true);
-  }, []);
-
-  const closeTicketDetails = useCallback(() => {
-    setIsDetailsVisible(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDetailsVisible) {
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      setSelectedTicketId(null);
-      setSelectedTicketPreview(null);
-    }, 260);
-
-    return () => clearTimeout(timeoutId);
-  }, [isDetailsVisible]);
-
-  const renderResolverRequest = useCallback(
-    ({ item }: { item: ResolverRequest }) => {
-      const noteValue = decisionNotes[item._id] ?? "";
-      const isProcessing = processingId === item._id;
-
-      return (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{item.requesterName}</Text>
-          <Text style={styles.metaText}>{item.requesterEmail}</Text>
-          <Text style={styles.metaText}>Submitted {formatTimestamp(item.submittedAt)}</Text>
-          <Text style={styles.bodyText}>Reason: {item.reason ?? "No reason provided."}</Text>
-
-          <TextInput
-            value={noteValue}
-            onChangeText={(value) =>
-              setDecisionNotes((previous) => ({ ...previous, [item._id]: value }))
-            }
-            style={styles.input}
-            placeholder="Required note for rejection"
-            placeholderTextColor={theme.colors.textMuted}
-          />
-
-          <View style={styles.row}>
-            <Pressable
-              disabled={isProcessing}
-              onPress={() => void onApprove(item._id)}
-              style={[styles.primaryButton, styles.halfButton, isProcessing ? styles.disabled : null]}
-            >
-              <Text style={styles.primaryButtonText}>Approve</Text>
-            </Pressable>
-            <Pressable
-              disabled={isProcessing}
-              onPress={() => void onReject(item._id)}
-              style={[styles.secondaryButton, styles.halfButton, isProcessing ? styles.disabled : null]}
-            >
-              <Text style={styles.secondaryButtonText}>Reject</Text>
-            </Pressable>
-          </View>
-        </View>
-      );
-    },
-    [decisionNotes, onApprove, onReject, processingId],
-  );
-
-  const renderOpenTicket = useCallback(
-    ({ item }: { item: Ticket }) => {
-      const isProcessing = processingId === item._id;
-      const selectedResolver = selectedResolverByTicket[item._id] ?? "";
-      const noteValue = assignmentNotes[item._id] ?? "";
-      const statusColors = getTicketStatusColors(item.status);
-
-      return (
-        <View style={styles.card}>
-          <Pressable onPress={() => openTicketDetails(item)} style={styles.detailsPreviewArea}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>{item.category}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
-                <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-                  {getTicketStatusLabel(item.status)}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.metaText}>{item.location}</Text>
-            {item.imageUrl ? (
-              <TicketImagePreview
-                uri={item.imageUrl}
-                style={styles.ticketImage}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  setLightboxImageUri(item.imageUrl);
-                }}
-              />
-            ) : null}
-            <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
-          </Pressable>
-
-          <Text style={styles.smallLabel}>Assign Resolver</Text>
-          <View style={styles.resolverChipRow}>
-            {(activeResolvers ?? []).map((resolver) => (
-              <Pressable
-                key={resolver._id}
-                style={[
-                  styles.resolverChip,
-                  selectedResolver === resolver._id ? styles.resolverChipActive : null,
-                ]}
-                onPress={() =>
-                  setSelectedResolverByTicket((previous) => ({
-                    ...previous,
-                    [item._id]: resolver._id,
-                  }))
-                }
-              >
-                <Text
-                  style={[
-                    styles.resolverChipText,
-                    selectedResolver === resolver._id ? styles.resolverChipTextActive : null,
-                  ]}
-                >
-                  {resolver.fullName}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <TextInput
-            value={noteValue}
-            onChangeText={(value) =>
-              setAssignmentNotes((previous) => ({ ...previous, [item._id]: value }))
-            }
-            style={styles.input}
-            placeholder="Optional assignment note"
-            placeholderTextColor={theme.colors.textMuted}
-          />
-
-          <Pressable
-            disabled={isProcessing}
-            onPress={() => void onAssignResolver(item)}
-            style={[styles.primaryButton, isProcessing ? styles.disabled : null]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {isProcessing ? "Assigning..." : "Assign Ticket"}
-            </Text>
-          </Pressable>
-        </View>
-      );
-    },
-    [
-      activeResolvers,
-      assignmentNotes,
-      onAssignResolver,
-      openTicketDetails,
-      processingId,
-      selectedResolverByTicket,
-    ],
-  );
-
-  const renderResolvedTicket = useCallback(
-    ({ item }: { item: Ticket }) => {
-      const isProcessing = processingId === item._id;
-      const noteValue = closureNotes[item._id] ?? "";
-      const statusColors = getTicketStatusColors(item.status);
-
-      return (
-        <View style={styles.card}>
-          <Pressable onPress={() => openTicketDetails(item)} style={styles.detailsPreviewArea}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>{item.category}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
-                <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-                  {getTicketStatusLabel(item.status)}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.metaText}>{item.location}</Text>
-            {item.imageUrl ? (
-              <TicketImagePreview
-                uri={item.imageUrl}
-                style={styles.ticketImage}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  setLightboxImageUri(item.imageUrl);
-                }}
-              />
-            ) : null}
-            <Text style={styles.bodyText}>{truncateText(item.description, 130)}</Text>
-            <Text style={styles.bodyText}>Resolver note: {item.resolutionNote ?? "No note."}</Text>
-            {item.resolutionImageUrl ? (
-              <TicketImagePreview
-                uri={item.resolutionImageUrl}
-                style={styles.ticketImage}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  setLightboxImageUri(item.resolutionImageUrl);
-                }}
-              />
-            ) : null}
-          </Pressable>
-
-          <TextInput
-            value={noteValue}
-            onChangeText={(value) =>
-              setClosureNotes((previous) => ({ ...previous, [item._id]: value }))
-            }
-            style={styles.input}
-            placeholder="Optional closure note"
-            placeholderTextColor={theme.colors.textMuted}
-          />
-
-          <Pressable
-            disabled={isProcessing}
-            onPress={() => void onCloseTicket(item)}
-            style={[styles.primaryButton, isProcessing ? styles.disabled : null]}
-          >
-            <Text style={styles.primaryButtonText}>{isProcessing ? "Closing..." : "Close Ticket"}</Text>
-          </Pressable>
-        </View>
-      );
-    },
-    [closureNotes, onCloseTicket, openTicketDetails, processingId],
-  );
-
-  const activeLoadStatus = activeTab === "resolver_requests"
-    ? resolverRequestsQuery.status
-    : activeTab === "assign_tickets"
-      ? openTicketsQuery.status
-      : resolvedTicketsQuery.status;
-
-  const onLoadMore = useCallback(() => {
-    if (activeTab === "resolver_requests") {
-      resolverRequestsQuery.loadMore(10);
-      return;
-    }
-    if (activeTab === "assign_tickets") {
-      openTicketsQuery.loadMore(10);
-      return;
-    }
-    resolvedTicketsQuery.loadMore(10);
-  }, [activeTab, openTicketsQuery, resolvedTicketsQuery, resolverRequestsQuery]);
-
-  const listHeader = (
+function ManagerHeader({
+  activeTab,
+  email,
+  errorMessage,
+  onSelectTab,
+  onSignOut,
+}: ManagerHeaderProps): React.JSX.Element {
+  return (
     <View style={styles.listHeader}>
       <View style={styles.heroCard}>
         <View style={styles.rowBetween}>
@@ -416,9 +151,9 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
             <Text style={styles.subtitle}>
               Approve resolver access, assign open tickets, and finalize closure.
             </Text>
-            <Text style={styles.metaText}>{props.email}</Text>
+            <Text style={styles.metaText}>{email}</Text>
           </View>
-          <Pressable onPress={props.onSignOut} style={styles.signOutButton}>
+          <Pressable onPress={onSignOut} style={styles.signOutButton}>
             <Text style={styles.signOutText}>Sign out</Text>
           </Pressable>
         </View>
@@ -428,7 +163,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
 
       <View style={styles.tabsRow}>
         <Pressable
-          onPress={() => setActiveTab("resolver_requests")}
+          onPress={() => onSelectTab("resolver_requests")}
           style={[
             styles.tabButton,
             activeTab === "resolver_requests" ? styles.tabButtonActive : null,
@@ -444,7 +179,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => setActiveTab("assign_tickets")}
+          onPress={() => onSelectTab("assign_tickets")}
           style={[
             styles.tabButton,
             activeTab === "assign_tickets" ? styles.tabButtonActive : null,
@@ -460,7 +195,7 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => setActiveTab("close_tickets")}
+          onPress={() => onSelectTab("close_tickets")}
           style={[
             styles.tabButton,
             activeTab === "close_tickets" ? styles.tabButtonActive : null,
@@ -480,20 +215,239 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
   );
+}
 
-  const listEmpty = (
-    <Text style={styles.emptyText}>
-      {activeTab === "resolver_requests"
-        ? "No pending resolver requests."
-        : activeTab === "assign_tickets"
-          ? "No open tickets awaiting assignment."
-          : "No resolved tickets awaiting closure."}
-    </Text>
+function ResolverRequestCard({
+  isProcessing,
+  note,
+  request,
+  onApprove,
+  onNoteChange,
+  onReject,
+}: ResolverRequestCardProps): React.JSX.Element {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{request.requesterName}</Text>
+      <Text style={styles.metaText}>{request.requesterEmail}</Text>
+      <Text style={styles.metaText}>
+        Submitted {formatTimestamp(request.submittedAt)}
+      </Text>
+      <Text style={styles.bodyText}>
+        Reason: {request.reason ?? "No reason provided."}
+      </Text>
+
+      <TextInput
+        value={note}
+        onChangeText={onNoteChange}
+        style={styles.input}
+        placeholder="Required note for rejection"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <View style={styles.row}>
+        <Pressable
+          disabled={isProcessing}
+          onPress={onApprove}
+          style={[
+            styles.primaryButton,
+            styles.halfButton,
+            isProcessing ? styles.disabled : null,
+          ]}
+        >
+          <Text style={styles.primaryButtonText}>Approve</Text>
+        </Pressable>
+        <Pressable
+          disabled={isProcessing}
+          onPress={onReject}
+          style={[
+            styles.secondaryButton,
+            styles.halfButton,
+            isProcessing ? styles.disabled : null,
+          ]}
+        >
+          <Text style={styles.secondaryButtonText}>Reject</Text>
+        </Pressable>
+      </View>
+    </View>
   );
+}
 
+function TicketSummaryPreview(props: {
+  bodyText?: React.JSX.Element;
+  onOpenDetails: () => void;
+  onOpenImage: (imageUri: string) => void;
+  ticket: Ticket;
+}): React.JSX.Element {
+  const statusColors = getTicketStatusColors(props.ticket.status);
+
+  return (
+    <Pressable onPress={props.onOpenDetails} style={styles.detailsPreviewArea}>
+      <View style={styles.rowBetween}>
+        <Text style={styles.cardTitle}>{props.ticket.category}</Text>
+        <View
+          style={[styles.statusBadge, { backgroundColor: statusColors.background }]}
+        >
+          <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+            {getTicketStatusLabel(props.ticket.status)}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.metaText}>{props.ticket.location}</Text>
+      {props.ticket.imageUrl ? (
+        <TicketImagePreview
+          uri={props.ticket.imageUrl}
+          style={styles.ticketImage}
+          onPress={(event) => {
+            event.stopPropagation();
+            props.onOpenImage(props.ticket.imageUrl!);
+          }}
+        />
+      ) : null}
+      <Text style={styles.bodyText}>
+        {truncateText(props.ticket.description, 130)}
+      </Text>
+      {props.bodyText}
+    </Pressable>
+  );
+}
+
+function OpenTicketAssignmentCard({
+  activeResolvers,
+  isProcessing,
+  note,
+  selectedResolverId,
+  ticket,
+  onNoteChange,
+  onOpenDetails,
+  onOpenImage,
+  onSelectResolver,
+  onSubmit,
+}: OpenTicketAssignmentCardProps): React.JSX.Element {
+  return (
+    <View style={styles.card}>
+      <TicketSummaryPreview
+        ticket={ticket}
+        onOpenDetails={onOpenDetails}
+        onOpenImage={onOpenImage}
+      />
+
+      <Text style={styles.smallLabel}>Assign Resolver</Text>
+      <View style={styles.resolverChipRow}>
+        {activeResolvers.map((resolver) => (
+          <Pressable
+            key={resolver._id}
+            style={[
+              styles.resolverChip,
+              selectedResolverId === resolver._id ? styles.resolverChipActive : null,
+            ]}
+            onPress={() => onSelectResolver(resolver._id)}
+          >
+            <Text
+              style={[
+                styles.resolverChipText,
+                selectedResolverId === resolver._id
+                  ? styles.resolverChipTextActive
+                  : null,
+              ]}
+            >
+              {resolver.fullName}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <TextInput
+        value={note}
+        onChangeText={onNoteChange}
+        style={styles.input}
+        placeholder="Optional assignment note"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <Pressable
+        disabled={isProcessing}
+        onPress={onSubmit}
+        style={[styles.primaryButton, isProcessing ? styles.disabled : null]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isProcessing ? "Assigning..." : "Assign Ticket"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ResolvedTicketClosureCard({
+  isProcessing,
+  note,
+  ticket,
+  onNoteChange,
+  onOpenDetails,
+  onOpenImage,
+  onSubmit,
+}: ResolvedTicketClosureCardProps): React.JSX.Element {
+  return (
+    <View style={styles.card}>
+      <TicketSummaryPreview
+        ticket={ticket}
+        onOpenDetails={onOpenDetails}
+        onOpenImage={onOpenImage}
+        bodyText={
+          <>
+            <Text style={styles.bodyText}>
+              Resolver note: {ticket.resolutionNote ?? "No note."}
+            </Text>
+            {ticket.resolutionImageUrl ? (
+              <TicketImagePreview
+                uri={ticket.resolutionImageUrl}
+                style={styles.ticketImage}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  onOpenImage(ticket.resolutionImageUrl!);
+                }}
+              />
+            ) : null}
+          </>
+        }
+      />
+
+      <TextInput
+        value={note}
+        onChangeText={onNoteChange}
+        style={styles.input}
+        placeholder="Optional closure note"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
+      <Pressable
+        disabled={isProcessing}
+        onPress={onSubmit}
+        style={[styles.primaryButton, isProcessing ? styles.disabled : null]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isProcessing ? "Closing..." : "Close Ticket"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ManagerTabPanel({
+  activeTab,
+  contentContainerStyle,
+  header,
+  onLoadMore,
+  openTickets,
+  pendingRequests,
+  renderOpenTicket,
+  renderResolvedTicket,
+  renderResolverRequest,
+  resolvedTickets,
+  showLoadMore,
+}: ManagerTabPanelProps): React.JSX.Element {
   const listFooter = (
     <View style={styles.footerSpace}>
-      {activeLoadStatus === "CanLoadMore" ? (
+      {showLoadMore ? (
         <Pressable onPress={onLoadMore} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Load More</Text>
         </Pressable>
@@ -501,47 +455,364 @@ export function ManagerHome(props: { email: string; onSignOut: () => void }): Re
     </View>
   );
 
-  return (
-    <AppScreen>
-      {activeTab === "resolver_requests" ? (
+  const listEmpty = (
+    <Text style={styles.emptyText}>{getManagerEmptyMessage(activeTab)}</Text>
+  );
+
+  switch (activeTab) {
+    case "resolver_requests":
+      return (
         <FlatList
           data={pendingRequests}
           keyExtractor={(item) => item._id}
           renderItem={renderResolverRequest}
-          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
-          ListHeaderComponent={listHeader}
+          contentContainerStyle={contentContainerStyle}
+          ListHeaderComponent={header}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
         />
-      ) : null}
-
-      {activeTab === "assign_tickets" ? (
+      );
+    case "assign_tickets":
+      return (
         <FlatList
           data={openTickets}
           keyExtractor={(item) => item._id}
           renderItem={renderOpenTicket}
-          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
-          ListHeaderComponent={listHeader}
+          contentContainerStyle={contentContainerStyle}
+          ListHeaderComponent={header}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
         />
-      ) : null}
-
-      {activeTab === "close_tickets" ? (
+      );
+    case "close_tickets":
+      return (
         <FlatList
           data={resolvedTickets}
           keyExtractor={(item) => item._id}
           renderItem={renderResolvedTicket}
-          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
-          ListHeaderComponent={listHeader}
+          contentContainerStyle={contentContainerStyle}
+          ListHeaderComponent={header}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={listFooter}
         />
-      ) : null}
+      );
+  }
+}
+
+export function ManagerHome(props: {
+  email: string;
+  onSignOut: () => void;
+}): React.JSX.Element {
+  const insets = useSafeAreaInsets();
+  const approveRequest = useMutation(api.resolverRequests.approve);
+  const rejectRequest = useMutation(api.resolverRequests.reject);
+  const assignResolver = useMutation(api.ticketsManager.assignResolver);
+  const closeTicket = useMutation(api.ticketsManager.close);
+
+  const resolverRequestsQuery = usePaginatedQuery(
+    api.resolverRequests.listPending,
+    {},
+    { initialNumItems: 10 },
+  );
+  const openTicketsQuery = usePaginatedQuery(
+    api.ticketsManager.listOpenUnassigned,
+    {},
+    { initialNumItems: 10 },
+  );
+  const resolvedTicketsQuery = usePaginatedQuery(
+    api.ticketsManager.listResolvedAwaitingClose,
+    {},
+    { initialNumItems: 10 },
+  );
+
+  const activeResolvers = useQuery(api.ticketsManager.listActiveResolvers, {}) as
+    | ResolverOption[]
+    | undefined;
+
+  const [activeTab, setActiveTab] =
+    useState<ManagerTab>("resolver_requests");
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
+  const [selectedResolverByTicket, setSelectedResolverByTicket] = useState<
+    Record<string, string>
+  >({});
+  const [assignmentNotes, setAssignmentNotes] = useState<Record<string, string>>(
+    {},
+  );
+  const [closureNotes, setClosureNotes] = useState<Record<string, string>>({});
+  const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] =
+    useState<Id<"tickets"> | null>(null);
+  const [selectedTicketPreview, setSelectedTicketPreview] =
+    useState<Ticket | null>(null);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+
+  const selectedTicket = useQuery(
+    api.ticketsShared.getById,
+    isDetailsVisible && selectedTicketId ? { ticketId: selectedTicketId } : "skip",
+  ) as TicketWithHistory | null | undefined;
+
+  const pendingRequests = useMemo(
+    () => resolverRequestsQuery.results as ResolverRequest[],
+    [resolverRequestsQuery.results],
+  );
+  const openTickets = useMemo(
+    () => openTicketsQuery.results as Ticket[],
+    [openTicketsQuery.results],
+  );
+  const resolvedTickets = useMemo(
+    () => resolvedTicketsQuery.results as Ticket[],
+    [resolvedTicketsQuery.results],
+  );
+
+  const onApprove = useCallback(
+    async (requestId: Id<"resolver_requests">) => {
+      setProcessingId(requestId);
+      setErrorMessage("");
+
+      try {
+        await approveRequest({ requestId });
+      } catch (error) {
+        setErrorMessage(formatError(error));
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [approveRequest],
+  );
+
+  const onReject = useCallback(
+    async (requestId: Id<"resolver_requests">) => {
+      const note = (decisionNotes[requestId] ?? "").trim();
+
+      if (!note) {
+        setErrorMessage("Decision note is required before rejecting a request.");
+        return;
+      }
+
+      setProcessingId(requestId);
+      setErrorMessage("");
+
+      try {
+        await rejectRequest({ requestId, decisionNote: note });
+        setDecisionNotes((previous) => ({ ...previous, [requestId]: "" }));
+      } catch (error) {
+        setErrorMessage(formatError(error));
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [decisionNotes, rejectRequest],
+  );
+
+  const onAssignResolver = useCallback(
+    async (ticket: Ticket) => {
+      const selectedResolverId =
+        selectedResolverByTicket[ticket._id] ?? activeResolvers?.[0]?._id ?? null;
+
+      if (!selectedResolverId) {
+        setErrorMessage("No active resolver available for assignment.");
+        return;
+      }
+
+      const note = (assignmentNotes[ticket._id] ?? "").trim();
+
+      setProcessingId(ticket._id);
+      setErrorMessage("");
+
+      try {
+        await assignResolver(
+          createAssignResolverArgs(
+            ticket._id,
+            selectedResolverId as Id<"users">,
+            note,
+          ),
+        );
+      } catch (error) {
+        setErrorMessage(formatError(error));
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [activeResolvers, assignmentNotes, assignResolver, selectedResolverByTicket],
+  );
+
+  const onCloseTicket = useCallback(
+    async (ticket: Ticket) => {
+      const note = (closureNotes[ticket._id] ?? "").trim();
+
+      setProcessingId(ticket._id);
+      setErrorMessage("");
+
+      try {
+        await closeTicket(createCloseTicketArgs(ticket._id, note));
+      } catch (error) {
+        setErrorMessage(formatError(error));
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [closeTicket, closureNotes],
+  );
+
+  const openTicketDetails = useCallback((ticket: Ticket) => {
+    setSelectedTicketId(ticket._id);
+    setSelectedTicketPreview(ticket);
+    setIsDetailsVisible(true);
+  }, []);
+
+  const closeTicketDetails = useCallback(() => {
+    setIsDetailsVisible(false);
+  }, []);
+
+  const openLightbox = useCallback((imageUri: string) => {
+    setLightboxImageUri(imageUri);
+  }, []);
+
+  useEffect(() => {
+    if (isDetailsVisible) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSelectedTicketId(null);
+      setSelectedTicketPreview(null);
+    }, 260);
+
+    return () => clearTimeout(timeoutId);
+  }, [isDetailsVisible]);
+
+  const renderResolverRequest = useCallback(
+    ({ item }: { item: ResolverRequest }) => (
+      <ResolverRequestCard
+        isProcessing={processingId === item._id}
+        note={decisionNotes[item._id] ?? ""}
+        request={item}
+        onApprove={() => {
+          void onApprove(item._id);
+        }}
+        onNoteChange={(value) => {
+          setDecisionNotes((previous) => ({ ...previous, [item._id]: value }));
+        }}
+        onReject={() => {
+          void onReject(item._id);
+        }}
+      />
+    ),
+    [decisionNotes, onApprove, onReject, processingId],
+  );
+
+  const renderOpenTicket = useCallback(
+    ({ item }: { item: Ticket }) => (
+      <OpenTicketAssignmentCard
+        activeResolvers={activeResolvers ?? []}
+        isProcessing={processingId === item._id}
+        note={assignmentNotes[item._id] ?? ""}
+        selectedResolverId={selectedResolverByTicket[item._id] ?? ""}
+        ticket={item}
+        onNoteChange={(value) => {
+          setAssignmentNotes((previous) => ({ ...previous, [item._id]: value }));
+        }}
+        onOpenDetails={() => openTicketDetails(item)}
+        onOpenImage={openLightbox}
+        onSelectResolver={(resolverId) => {
+          setSelectedResolverByTicket((previous) => ({
+            ...previous,
+            [item._id]: resolverId,
+          }));
+        }}
+        onSubmit={() => {
+          void onAssignResolver(item);
+        }}
+      />
+    ),
+    [
+      activeResolvers,
+      assignmentNotes,
+      onAssignResolver,
+      openLightbox,
+      openTicketDetails,
+      processingId,
+      selectedResolverByTicket,
+    ],
+  );
+
+  const renderResolvedTicket = useCallback(
+    ({ item }: { item: Ticket }) => (
+      <ResolvedTicketClosureCard
+        isProcessing={processingId === item._id}
+        note={closureNotes[item._id] ?? ""}
+        ticket={item}
+        onNoteChange={(value) => {
+          setClosureNotes((previous) => ({ ...previous, [item._id]: value }));
+        }}
+        onOpenDetails={() => openTicketDetails(item)}
+        onOpenImage={openLightbox}
+        onSubmit={() => {
+          void onCloseTicket(item);
+        }}
+      />
+    ),
+    [closureNotes, onCloseTicket, openLightbox, openTicketDetails, processingId],
+  );
+
+  const activeLoadStatus =
+    activeTab === "resolver_requests"
+      ? resolverRequestsQuery.status
+      : activeTab === "assign_tickets"
+        ? openTicketsQuery.status
+        : resolvedTicketsQuery.status;
+
+  const onLoadMore = useCallback(() => {
+    if (activeTab === "resolver_requests") {
+      resolverRequestsQuery.loadMore(10);
+      return;
+    }
+
+    if (activeTab === "assign_tickets") {
+      openTicketsQuery.loadMore(10);
+      return;
+    }
+
+    resolvedTicketsQuery.loadMore(10);
+  }, [activeTab, openTicketsQuery, resolvedTicketsQuery, resolverRequestsQuery]);
+
+  const listHeader = (
+    <ManagerHeader
+      activeTab={activeTab}
+      email={props.email}
+      errorMessage={errorMessage}
+      onSelectTab={setActiveTab}
+      onSignOut={props.onSignOut}
+    />
+  );
+  const listContentStyle = useMemo(
+    () => [styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }],
+    [insets.bottom],
+  );
+
+  return (
+    <AppScreen>
+      <ManagerTabPanel
+        activeTab={activeTab}
+        contentContainerStyle={listContentStyle}
+        header={listHeader}
+        onLoadMore={onLoadMore}
+        openTickets={openTickets}
+        pendingRequests={pendingRequests}
+        renderOpenTicket={renderOpenTicket}
+        renderResolvedTicket={renderResolvedTicket}
+        renderResolverRequest={renderResolverRequest}
+        resolvedTickets={resolvedTickets}
+        showLoadMore={activeLoadStatus === "CanLoadMore"}
+      />
       <TicketDetailsPanel
         visible={isDetailsVisible}
         ticket={selectedTicket?.ticket ?? selectedTicketPreview}
-        historyEntries={selectedTicket === undefined ? undefined : selectedTicket?.history ?? null}
+        historyEntries={
+          selectedTicket === undefined ? undefined : selectedTicket?.history ?? null
+        }
         historyUnavailableText="Status history is unavailable for this ticket."
         onClose={closeTicketDetails}
       />
