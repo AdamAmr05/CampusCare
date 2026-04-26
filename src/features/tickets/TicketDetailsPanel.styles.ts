@@ -49,22 +49,8 @@ export const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
-  summaryHeaderRow: {
-    minHeight: 88,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-  },
   summaryHead: {
-    flex: 1,
     gap: 4,
-  },
-  summaryIllustration: {
-    height: 92,
-    marginRight: -10,
-    marginTop: -18,
-    width: 92,
   },
   summaryTitle: {
     fontSize: 22,
@@ -104,28 +90,6 @@ export const styles = StyleSheet.create({
     backgroundColor: "#ece6ce",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
-  },
-  modalImageFallback: {
-    marginTop: 8,
-    minHeight: 188,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-    backgroundColor: "rgba(255, 248, 223, 0.7)",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    overflow: "hidden",
-  },
-  modalImageFallbackIllustration: {
-    height: 124,
-    width: 124,
-  },
-  modalImageFallbackText: {
-    color: theme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "uppercase",
   },
   modalDescriptionLabel: {
     fontSize: 12,

@@ -11,7 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { theme } from "./theme";
 import { appScreenStyles as styles } from "./AppScreen.styles";
 
-const campusMapBackground = require("../../assets/backgrounds/campus-map-background.png");
+const campusMapBackground = require("../../assets/backgrounds/campus-map-background-v2.png");
 
 export function AppScreen(props: {
   children: React.ReactNode;
