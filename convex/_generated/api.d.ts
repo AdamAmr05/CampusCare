@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as lib_accessTransitions from "../lib/accessTransitions.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_notifications from "../lib/notifications.js";
@@ -31,6 +32,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  "lib/accessTransitions": typeof lib_accessTransitions;
   "lib/auth": typeof lib_auth;
   "lib/env": typeof lib_env;
   "lib/notifications": typeof lib_notifications;
