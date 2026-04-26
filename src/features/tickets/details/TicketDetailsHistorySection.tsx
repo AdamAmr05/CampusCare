@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { theme } from "../../../ui/theme";
 import { styles } from "../TicketDetailsPanel.styles";
 import type { TicketStatusHistoryEntry } from "../types";
-import { formatTimestamp } from "../utils";
+import { formatTimestamp, getTicketStatusShortLabel } from "../utils";
 
 export const TicketDetailsHistorySection = memo(function TicketDetailsHistorySection(props: {
   historyEntries?: TicketStatusHistoryEntry[] | null;
@@ -36,7 +36,9 @@ export const TicketDetailsHistorySection = memo(function TicketDetailsHistorySec
                   {!isLast ? <View style={styles.timelineLine} /> : null}
                 </View>
                 <View style={styles.timelineContent}>
-                  <Text style={styles.historyLine}>{`${entry.fromStatus ?? "none"} -> ${entry.toStatus}`}</Text>
+                  <Text style={styles.historyLine}>
+                    {`${getTicketStatusShortLabel(entry.fromStatus)} → ${getTicketStatusShortLabel(entry.toStatus)}`}
+                  </Text>
                   <Text style={styles.ticketMeta}>{formatTimestamp(entry.changedAt)}</Text>
                   {entry.note ? (
                     <View style={styles.historyNote}>
