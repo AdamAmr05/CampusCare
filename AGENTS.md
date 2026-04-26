@@ -51,6 +51,7 @@ Scope boundary:
 - Start Expo: `npm run start`
 - Android: `npm run android`
 - iOS: `npm run ios`
+- Native iOS build: `npm run ios:native`
 - Web: `npm run web`
 - Convex dev sync: `npm run convex:dev`
 
