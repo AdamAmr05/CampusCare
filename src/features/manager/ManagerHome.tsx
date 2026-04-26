@@ -188,7 +188,7 @@ function ManagerHeader({
         </View>
       </View>
 
-      <NotificationCenter />
+      <NotificationCenter variant="row" />
 
       <View style={styles.tabsRow}>
         <GlassPressable

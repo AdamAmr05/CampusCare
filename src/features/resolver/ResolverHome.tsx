@@ -156,7 +156,7 @@ function ResolverHomeHeader({
           </View>
         </View>
       </View>
-      <NotificationCenter />
+      <NotificationCenter variant="row" />
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
   );
