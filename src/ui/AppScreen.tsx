@@ -1,4 +1,5 @@
 import React from "react";
+import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ScrollView,
@@ -9,6 +10,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "./theme";
 import { appScreenStyles as styles } from "./AppScreen.styles";
+
+const campusMapBackground = require("../../assets/backgrounds/campus-map-background.png");
 
 export function AppScreen(props: {
   children: React.ReactNode;
@@ -35,9 +38,14 @@ export function AppScreen(props: {
 
   return (
     <LinearGradient colors={theme.gradients.background} style={styles.background}>
+      <ExpoImage
+        pointerEvents="none"
+        source={campusMapBackground}
+        style={styles.backgroundArtwork}
+        contentFit="cover"
+      />
+      <View pointerEvents="none" style={styles.backgroundWash} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <View pointerEvents="none" style={styles.glowTop} />
-        <View pointerEvents="none" style={styles.glowBottom} />
         <View style={styles.frame}>{content}</View>
       </SafeAreaView>
     </LinearGradient>

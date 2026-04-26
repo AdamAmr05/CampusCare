@@ -1,9 +1,16 @@
 import { StyleSheet } from "react-native";
-import { theme } from "./theme";
 
 export const appScreenStyles = StyleSheet.create({
   background: {
     flex: 1,
+  },
+  backgroundArtwork: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.72,
+  },
+  backgroundWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 254, 249, 0.44)",
   },
   safeArea: {
     flex: 1,
@@ -24,25 +31,5 @@ export const appScreenStyles = StyleSheet.create({
     flexGrow: 1,
     gap: 12,
     paddingBottom: 24,
-  },
-  glowTop: {
-    position: "absolute",
-    top: -80,
-    right: -40,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: theme.colors.yellow,
-    opacity: 0.18,
-  },
-  glowBottom: {
-    position: "absolute",
-    bottom: -90,
-    left: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: theme.colors.red,
-    opacity: 0.09,
   },
 });
