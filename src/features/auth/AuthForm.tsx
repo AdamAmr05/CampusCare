@@ -1,13 +1,19 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSignIn, useSignUp } from "@clerk/clerk-expo";
 import type { OnboardingIntent } from "../../domain/types";
 import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
+import {
+  AuthSegmentedControl,
+  type AuthMode,
+} from "./components/AuthSegmentedControl";
+import { AuthPasswordField } from "./components/AuthPasswordField";
+import { AuthErrorBanner } from "./components/AuthErrorBanner";
 import { styles } from "./AuthForm.styles";
 
-type AuthMode = "sign_in" | "sign_up";
 type AuthStage = "credentials" | "verification" | "second_factor";
 type SecondFactorStrategy =
   | "totp"
@@ -30,11 +36,6 @@ type RawSecondFactor = {
   phoneNumberId?: string;
   emailAddressId?: string;
   primary?: boolean;
-};
-
-type IntentSelectorProps = {
-  intent: OnboardingIntent;
-  onSelectIntent: (intent: OnboardingIntent) => void;
 };
 
 type SecondFactorStepProps = {
@@ -72,6 +73,8 @@ type VerificationStepProps = {
   onCodeChange: (code: string) => void;
   onSubmit: () => void;
 };
+
+const GIU_EMAIL_PATTERN = /@([a-z0-9-]+\.)*giu-uni\.de$/i;
 
 function getIncompleteSignInMessage(status: string | null | undefined): string {
   switch (status) {
@@ -174,15 +177,21 @@ function getAuthStage(args: {
   return "credentials";
 }
 
-function getAuthHeading(intent: OnboardingIntent): string {
-  return intent === "resolver"
-    ? "Resolver Access Request"
-    : "Reporter Sign In";
+function getAuthHeading(intent: OnboardingIntent, mode: AuthMode): string {
+  if (intent === "resolver") {
+    return mode === "sign_up" ? "Request resolver access" : "Resolver sign in";
+  }
+  return mode === "sign_up" ? "Create your account" : "Welcome back";
 }
 
-function getAuthSubtitle(intent: OnboardingIntent): string {
-  return intent === "resolver"
-    ? "Use your GIU account. Manager approval is required before resolver access is active."
+function getAuthSubtitle(intent: OnboardingIntent, mode: AuthMode): string {
+  if (intent === "resolver") {
+    return mode === "sign_up"
+      ? "Sign up with your verified GIU email. A manager will review and approve your access."
+      : "Sign in with your GIU email. If access was approved, you'll see your queue.";
+  }
+  return mode === "sign_up"
+    ? "Sign up with your verified GIU email to start reporting issues."
     : "Sign in with your verified GIU email to report and track issues.";
 }
 
@@ -203,41 +212,16 @@ function requireCompletedSession(args: {
   return args.createdSessionId;
 }
 
-function IntentSelector({
-  intent,
-  onSelectIntent,
-}: IntentSelectorProps): React.JSX.Element {
-  return (
-    <View style={styles.pathRow}>
-      <Pressable
-        onPress={() => onSelectIntent("reporter")}
-        style={[styles.pathChip, intent === "reporter" ? styles.pathChipActive : null]}
-      >
-        <Text
-          style={[
-            styles.pathChipText,
-            intent === "reporter" ? styles.pathChipTextActive : null,
-          ]}
-        >
-          Reporter
-        </Text>
-      </Pressable>
-      <Pressable
-        onPress={() => onSelectIntent("resolver")}
-        style={[styles.pathChip, intent === "resolver" ? styles.pathChipActive : null]}
-      >
-        <Text
-          style={[
-            styles.pathChipText,
-            intent === "resolver" ? styles.pathChipTextActive : null,
-          ]}
-        >
-          Resolver
-        </Text>
-      </Pressable>
-    </View>
-  );
+function isLikelyGiuEmail(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.length === 0) return true;
+  if (!trimmed.includes("@")) return true; // still typing
+  return GIU_EMAIL_PATTERN.test(trimmed);
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Sub-components
+// ────────────────────────────────────────────────────────────────────────────
 
 function SecondFactorStep({
   code,
@@ -257,67 +241,142 @@ function SecondFactorStep({
 
   return (
     <>
-      <Text style={styles.subtitle}>
+      <Text style={styles.stepHint}>
         {selectedOption
           ? `Enter ${getSecondFactorLabel(selectedOption)} to finish sign-in.`
           : "Enter your second-factor code to finish sign-in."}
       </Text>
 
       {options.length > 1 ? (
-        <View style={styles.pathRow}>
-          {options.map((option) => (
-            <Pressable
-              key={getSecondFactorKey(option)}
-              onPress={() => onSelectOption(option)}
-              style={[
-                styles.pathChip,
-                selectedOption?.strategy === option.strategy
-                  ? styles.pathChipActive
-                  : null,
-              ]}
-              disabled={isSubmitting}
-            >
-              <Text
-                style={[
-                  styles.pathChipText,
-                  selectedOption?.strategy === option.strategy
-                    ? styles.pathChipTextActive
-                    : null,
+        <View style={styles.factorRow}>
+          {options.map((option) => {
+            const isActive = selectedOption?.strategy === option.strategy;
+            return (
+              <Pressable
+                key={getSecondFactorKey(option)}
+                onPress={() => onSelectOption(option)}
+                disabled={isSubmitting}
+                style={({ pressed }) => [
+                  styles.factorChip,
+                  isActive ? styles.factorChipActive : null,
+                  pressed && !isActive ? styles.controlPressed : null,
                 ]}
               >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.factorChipText,
+                    isActive ? styles.factorChipTextActive : null,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
 
       <TextInput
         value={code}
         onChangeText={onCodeChange}
-        style={styles.input}
+        style={[styles.input, styles.codeInput]}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="number-pad"
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
-        placeholder="Second-factor code"
+        placeholder="Code"
         placeholderTextColor={theme.colors.textMuted}
       />
 
       <Pressable
         onPress={onSubmit}
         disabled={submitDisabled}
-        style={[
+        style={({ pressed }) => [
           styles.primaryButton,
           submitDisabled ? styles.disabledButton : null,
+          pressed && !submitDisabled ? styles.controlPressed : null,
         ]}
       >
         <Text style={styles.primaryButtonText}>
-          {isSubmitting ? "Verifying..." : "Verify and sign in"}
+          {isSubmitting ? "Verifying…" : "Verify and sign in"}
         </Text>
       </Pressable>
     </>
+  );
+}
+
+function NameFields({
+  firstName,
+  lastName,
+  onFirstNameChange,
+  onLastNameChange,
+}: {
+  firstName: string;
+  lastName: string;
+  onFirstNameChange: (value: string) => void;
+  onLastNameChange: (value: string) => void;
+}): React.JSX.Element {
+  return (
+    <View style={styles.nameRow}>
+      <TextInput
+        value={firstName}
+        onChangeText={onFirstNameChange}
+        style={[styles.input, styles.nameInput]}
+        placeholder="First name"
+        placeholderTextColor={theme.colors.textMuted}
+        textContentType="givenName"
+        autoComplete="name-given"
+      />
+      <TextInput
+        value={lastName}
+        onChangeText={onLastNameChange}
+        style={[styles.input, styles.nameInput]}
+        placeholder="Last name"
+        placeholderTextColor={theme.colors.textMuted}
+        textContentType="familyName"
+        autoComplete="name-family"
+      />
+    </View>
+  );
+}
+
+function EmailField({
+  value,
+  onChange,
+  showValidationHint,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  showValidationHint: boolean;
+}): React.JSX.Element {
+  return (
+    <View style={styles.fieldGroup}>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        style={styles.input}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        autoComplete="email"
+        placeholder="GIU email"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+      {showValidationHint ? (
+        <View style={styles.fieldHintRow}>
+          <Ionicons
+            name="information-circle-outline"
+            size={12}
+            color={theme.colors.yellowDeep}
+          />
+          <Text style={styles.fieldHintText}>
+            Use a @giu-uni.de email so you can complete verification.
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -339,94 +398,58 @@ function CredentialsStep({
 }: CredentialsStepProps): React.JSX.Element {
   const isSignUp = mode === "sign_up";
   const onSubmit = isSignUp ? onSubmitSignUp : onSubmitSignIn;
+  const isBusy = isSubmitting || !loaded;
+  const showEmailHint =
+    email.trim().length > 0 && !isLikelyGiuEmail(email);
 
   return (
     <>
-      <View style={styles.modeRow}>
-        <Pressable
-          onPress={() => onModeChange("sign_in")}
-          style={styles.modeButton}
-        >
-          <Text style={mode === "sign_in" ? styles.modeTextActive : styles.modeText}>
-            Sign in
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onModeChange("sign_up")}
-          style={styles.modeButton}
-        >
-          <Text style={mode === "sign_up" ? styles.modeTextActive : styles.modeText}>
-            Sign up
-          </Text>
-        </Pressable>
-      </View>
+      <AuthSegmentedControl mode={mode} onChange={onModeChange} />
 
       {isSignUp ? (
-        <>
-          <TextInput
-            value={firstName}
-            onChangeText={onFirstNameChange}
-            style={styles.input}
-            placeholder="First name"
-            placeholderTextColor={theme.colors.textMuted}
-            textContentType="givenName"
-            autoComplete="name-given"
-          />
-          <TextInput
-            value={lastName}
-            onChangeText={onLastNameChange}
-            style={styles.input}
-            placeholder="Last name"
-            placeholderTextColor={theme.colors.textMuted}
-            textContentType="familyName"
-            autoComplete="name-family"
-          />
-        </>
+        <NameFields
+          firstName={firstName}
+          lastName={lastName}
+          onFirstNameChange={onFirstNameChange}
+          onLastNameChange={onLastNameChange}
+        />
       ) : null}
 
-      <TextInput
+      <EmailField
         value={email}
-        onChangeText={onEmailChange}
-        style={styles.input}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        textContentType="emailAddress"
-        autoComplete="email"
-        placeholder="Email (@*.giu-uni.de)"
-        placeholderTextColor={theme.colors.textMuted}
+        onChange={onEmailChange}
+        showValidationHint={showEmailHint}
       />
 
-      <TextInput
+      <AuthPasswordField
         value={password}
         onChangeText={onPasswordChange}
-        style={styles.input}
-        secureTextEntry
-        autoCorrect={false}
-        textContentType={isSignUp ? "newPassword" : "password"}
-        autoComplete={isSignUp ? "new-password" : "current-password"}
-        placeholder="Password"
-        placeholderTextColor={theme.colors.textMuted}
+        isSignUp={isSignUp}
       />
 
       <Pressable
         onPress={onSubmit}
-        disabled={isSubmitting || !loaded}
-        style={[
+        disabled={isBusy}
+        style={({ pressed }) => [
           styles.primaryButton,
-          isSubmitting || !loaded ? styles.disabledButton : null,
+          isBusy ? styles.disabledButton : null,
+          pressed && !isBusy ? styles.controlPressed : null,
         ]}
       >
         <Text style={styles.primaryButtonText}>
-          {isSubmitting
-            ? "Working..."
-            : isSignUp
-              ? "Sign up & verify email"
-              : "Sign in"}
+          {getCredentialsButtonLabel(isSignUp, isSubmitting)}
         </Text>
       </Pressable>
     </>
   );
+}
+
+function getCredentialsButtonLabel(
+  isSignUp: boolean,
+  isSubmitting: boolean,
+): string {
+  if (isSubmitting) return "Working…";
+  return isSignUp ? "Sign up & verify email" : "Sign in";
 }
 
 function VerificationStep({
@@ -436,44 +459,50 @@ function VerificationStep({
   onCodeChange,
   onSubmit,
 }: VerificationStepProps): React.JSX.Element {
+  const isBusy = isSubmitting || !loaded;
   return (
     <>
-      <Text style={styles.subtitle}>
+      <Text style={styles.stepHint}>
         Enter the verification code from your GIU inbox.
       </Text>
 
       <TextInput
         value={code}
         onChangeText={onCodeChange}
-        style={styles.input}
+        style={[styles.input, styles.codeInput]}
         autoCapitalize="none"
         keyboardType="number-pad"
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
         placeholder="Verification code"
         placeholderTextColor={theme.colors.textMuted}
+        autoFocus
       />
 
       <Pressable
         onPress={onSubmit}
-        disabled={isSubmitting || !loaded}
-        style={[
+        disabled={isBusy}
+        style={({ pressed }) => [
           styles.primaryButton,
-          isSubmitting || !loaded ? styles.disabledButton : null,
+          isBusy ? styles.disabledButton : null,
+          pressed && !isBusy ? styles.controlPressed : null,
         ]}
       >
         <Text style={styles.primaryButtonText}>
-          {isSubmitting ? "Verifying..." : "Verify and continue"}
+          {isSubmitting ? "Verifying…" : "Verify and continue"}
         </Text>
       </Pressable>
     </>
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Main form
+// ────────────────────────────────────────────────────────────────────────────
+
 export function AuthForm(props: {
   intent: OnboardingIntent;
   onBack: () => void;
-  onIntentChange: (intent: OnboardingIntent) => void;
 }): React.JSX.Element {
   const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } =
     useSignIn();
@@ -500,10 +529,14 @@ export function AuthForm(props: {
   const [verificationCode, setVerificationCode] = useState("");
 
   const loaded = signInLoaded && signUpLoaded;
-  const stage = getAuthStage({
-    awaitingSecondFactor,
-    awaitingVerification,
-  });
+  const stage = useMemo(
+    () =>
+      getAuthStage({
+        awaitingSecondFactor,
+        awaitingVerification,
+      }),
+    [awaitingSecondFactor, awaitingVerification],
+  );
 
   const resetSecondFactorState = () => {
     setAwaitingSecondFactor(false);
@@ -570,13 +603,6 @@ export function AuthForm(props: {
     setSecondFactorCode("");
     setAwaitingVerification(false);
     setAwaitingSecondFactor(true);
-  };
-
-  const handleIntentChange = (intent: OnboardingIntent) => {
-    props.onIntentChange(intent);
-    resetVerificationState();
-    resetSecondFactorState();
-    setErrorMessage("");
   };
 
   const handleModeChange = (nextMode: AuthMode) => {
@@ -697,83 +723,167 @@ export function AuthForm(props: {
     });
   };
 
-  let stageContent: React.JSX.Element;
-
-  if (stage === "second_factor") {
-    stageContent = (
-      <SecondFactorStep
-        code={secondFactorCode}
-        isSubmitting={isSubmitting}
-        loaded={loaded}
-        options={secondFactorOptions}
-        selectedOption={selectedSecondFactor}
-        onCodeChange={setSecondFactorCode}
-        onSelectOption={(option) => {
-          void selectSecondFactor(option);
-        }}
-        onSubmit={() => {
-          void submitSecondFactor();
-        }}
-      />
-    );
-  } else if (stage === "verification") {
-    stageContent = (
-      <VerificationStep
-        code={verificationCode}
-        isSubmitting={isSubmitting}
-        loaded={loaded}
-        onCodeChange={setVerificationCode}
-        onSubmit={() => {
-          void verifySignUp();
-        }}
-      />
-    );
-  } else {
-    stageContent = (
-      <CredentialsStep
-        email={email}
-        firstName={firstName}
-        isSubmitting={isSubmitting}
-        lastName={lastName}
-        loaded={loaded}
-        mode={mode}
-        password={password}
-        onEmailChange={setEmail}
-        onFirstNameChange={setFirstName}
-        onLastNameChange={setLastName}
-        onModeChange={handleModeChange}
-        onPasswordChange={setPassword}
-        onSubmitSignIn={() => {
-          void submitSignIn();
-        }}
-        onSubmitSignUp={() => {
-          void submitSignUp();
-        }}
-      />
-    );
-  }
+  const stageContent = renderStageContent({
+    stage,
+    isSubmitting,
+    loaded,
+    mode,
+    email,
+    firstName,
+    lastName,
+    password,
+    verificationCode,
+    secondFactorOptions,
+    selectedSecondFactor,
+    secondFactorCode,
+    onEmailChange: setEmail,
+    onFirstNameChange: setFirstName,
+    onLastNameChange: setLastName,
+    onModeChange: handleModeChange,
+    onPasswordChange: setPassword,
+    onSecondFactorCodeChange: setSecondFactorCode,
+    onSelectSecondFactor: (option) => {
+      void selectSecondFactor(option);
+    },
+    onSubmitSignIn: () => {
+      void submitSignIn();
+    },
+    onSubmitSignUp: () => {
+      void submitSignUp();
+    },
+    onSubmitSecondFactor: () => {
+      void submitSecondFactor();
+    },
+    onSubmitVerification: () => {
+      void verifySignUp();
+    },
+    onVerificationCodeChange: setVerificationCode,
+  });
 
   return (
     <AppScreen scroll contentContainerStyle={styles.scrollContent}>
       <View style={styles.card}>
-        <Text style={styles.title}>{getAuthHeading(props.intent)}</Text>
-        <Text style={styles.subtitle}>{getAuthSubtitle(props.intent)}</Text>
+        <Pressable
+          onPress={props.onBack}
+          style={({ pressed }) => [
+            styles.backRow,
+            pressed ? styles.backRowPressed : null,
+          ]}
+          hitSlop={6}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={16}
+            color={theme.colors.textSecondary}
+          />
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
 
-        <IntentSelector
-          intent={props.intent}
-          onSelectIntent={handleIntentChange}
-        />
+        <View style={styles.headBlock}>
+          <Text style={styles.title}>{getAuthHeading(props.intent, mode)}</Text>
+          <Text style={styles.subtitle}>
+            {getAuthSubtitle(props.intent, mode)}
+          </Text>
+        </View>
+
+        {props.intent === "resolver" && stage === "credentials" ? (
+          <ResolverNotice mode={mode} />
+        ) : null}
 
         {stageContent}
 
-        {errorMessage.length > 0 ? (
-          <Text style={styles.errorText}>{errorMessage}</Text>
-        ) : null}
-
-        <Pressable onPress={props.onBack} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Back</Text>
-        </Pressable>
+        <AuthErrorBanner message={errorMessage} />
       </View>
     </AppScreen>
+  );
+}
+
+function ResolverNotice({ mode }: { mode: AuthMode }): React.JSX.Element {
+  return (
+    <View style={styles.noticeBanner}>
+      <Ionicons
+        name="construct-outline"
+        size={14}
+        color={theme.colors.yellowDeep}
+      />
+      <Text style={styles.noticeText}>
+        {mode === "sign_up"
+          ? "After sign-up, a manager will review your request before resolver access becomes active."
+          : "If you've been approved, you'll see your resolver queue. Otherwise you'll see a pending or rejected screen."}
+      </Text>
+    </View>
+  );
+}
+
+type StageContentArgs = {
+  stage: AuthStage;
+  isSubmitting: boolean;
+  loaded: boolean;
+  mode: AuthMode;
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  verificationCode: string;
+  secondFactorOptions: SecondFactorOption[];
+  selectedSecondFactor: SecondFactorOption | null;
+  secondFactorCode: string;
+  onEmailChange: (value: string) => void;
+  onFirstNameChange: (value: string) => void;
+  onLastNameChange: (value: string) => void;
+  onModeChange: (mode: AuthMode) => void;
+  onPasswordChange: (value: string) => void;
+  onSecondFactorCodeChange: (value: string) => void;
+  onSelectSecondFactor: (option: SecondFactorOption) => void;
+  onSubmitSignIn: () => void;
+  onSubmitSignUp: () => void;
+  onSubmitSecondFactor: () => void;
+  onSubmitVerification: () => void;
+  onVerificationCodeChange: (value: string) => void;
+};
+
+function renderStageContent(args: StageContentArgs): React.JSX.Element {
+  if (args.stage === "second_factor") {
+    return (
+      <SecondFactorStep
+        code={args.secondFactorCode}
+        isSubmitting={args.isSubmitting}
+        loaded={args.loaded}
+        options={args.secondFactorOptions}
+        selectedOption={args.selectedSecondFactor}
+        onCodeChange={args.onSecondFactorCodeChange}
+        onSelectOption={args.onSelectSecondFactor}
+        onSubmit={args.onSubmitSecondFactor}
+      />
+    );
+  }
+  if (args.stage === "verification") {
+    return (
+      <VerificationStep
+        code={args.verificationCode}
+        isSubmitting={args.isSubmitting}
+        loaded={args.loaded}
+        onCodeChange={args.onVerificationCodeChange}
+        onSubmit={args.onSubmitVerification}
+      />
+    );
+  }
+  return (
+    <CredentialsStep
+      email={args.email}
+      firstName={args.firstName}
+      isSubmitting={args.isSubmitting}
+      lastName={args.lastName}
+      loaded={args.loaded}
+      mode={args.mode}
+      password={args.password}
+      onEmailChange={args.onEmailChange}
+      onFirstNameChange={args.onFirstNameChange}
+      onLastNameChange={args.onLastNameChange}
+      onModeChange={args.onModeChange}
+      onPasswordChange={args.onPasswordChange}
+      onSubmitSignIn={args.onSubmitSignIn}
+      onSubmitSignUp={args.onSubmitSignUp}
+    />
   );
 }
