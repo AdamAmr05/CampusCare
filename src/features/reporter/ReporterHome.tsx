@@ -14,6 +14,7 @@ import { theme } from "../../ui/theme";
 import {
   WorkspaceEmptyState,
   WorkspaceHero,
+  WorkspaceListSkeleton,
   WorkspaceLoadMoreFooter,
   WorkspaceTicketCard,
 } from "../../ui/workspace";
@@ -325,11 +326,15 @@ export function ReporterHome({
         renderItem={renderTicket}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          <WorkspaceEmptyState
-            illustration="ticketClosed"
-            title="No tickets yet"
-            body="Submit your first issue when something needs attention."
-          />
+          status === "LoadingFirstPage" ? (
+            <WorkspaceListSkeleton />
+          ) : (
+            <WorkspaceEmptyState
+              illustration="ticketClosed"
+              title="No tickets yet"
+              body="Submit your first issue when something needs attention."
+            />
+          )
         }
         contentContainerStyle={[
           listHeaderStyles.listContent,

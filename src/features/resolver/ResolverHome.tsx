@@ -9,6 +9,7 @@ import { theme } from "../../ui/theme";
 import {
   WorkspaceEmptyState,
   WorkspaceHero,
+  WorkspaceListSkeleton,
   WorkspaceLoadMoreFooter,
   WorkspaceTicketCard,
 } from "../../ui/workspace";
@@ -154,11 +155,15 @@ export function ResolverHome({
           />
         }
         ListEmptyComponent={
-          <WorkspaceEmptyState
-            illustration="managerAssignment"
-            title="Queue is clear"
-            body="No tickets are assigned to you yet. Hang tight."
-          />
+          status === "LoadingFirstPage" ? (
+            <WorkspaceListSkeleton />
+          ) : (
+            <WorkspaceEmptyState
+              illustration="managerAssignment"
+              title="Queue is clear"
+              body="No tickets are assigned to you yet. Hang tight."
+            />
+          )
         }
         ListFooterComponent={
           <WorkspaceLoadMoreFooter
