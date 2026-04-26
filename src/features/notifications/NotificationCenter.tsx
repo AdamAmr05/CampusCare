@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, Text, View } from "react-native";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { GlassPressable, getActiveGlassTint } from "../../ui/GlassSurface";
 import type { AppNotification } from "./types";
 import { formatNotificationTimestamp, getNotificationTypeLabel } from "./utils";
 import { formatError } from "../../utils/formatError";
@@ -108,28 +109,37 @@ export function NotificationCenter(): React.JSX.Element {
   return (
     <>
       <View style={styles.triggerRow}>
-        <Pressable onPress={openModal} style={styles.triggerButton}>
+        <GlassPressable
+          onPress={openModal}
+          surfaceStyle={styles.triggerButton}
+          pressedSurfaceStyle={styles.controlPressed}
+        >
           <Text style={styles.triggerButtonText}>Notifications ({unreadDisplay} unread)</Text>
-        </Pressable>
-        <Pressable
+        </GlassPressable>
+        <GlassPressable
           onPress={() => void onMarkAllRead()}
           disabled={isMarkingAllRead || unreadDisplay === 0}
-          style={styles.markAllButton}
+          surfaceStyle={styles.markAllButton}
+          pressedSurfaceStyle={styles.controlPressed}
+          disabledSurfaceStyle={styles.controlDisabled}
         >
           <Text style={styles.markAllText}>
             {isMarkingAllRead ? "Marking..." : "Mark all read"}
           </Text>
-        </Pressable>
+        </GlassPressable>
         {__DEV__ ? (
-          <Pressable
+          <GlassPressable
             onPress={() => void onSendTestNotification()}
             disabled={isSendingTest}
-            style={styles.testButton}
+            surfaceStyle={styles.testButton}
+            pressedSurfaceStyle={styles.controlPressed}
+            disabledSurfaceStyle={styles.controlDisabled}
+            tintColor={getActiveGlassTint(true)}
           >
             <Text style={styles.testButtonText}>
               {isSendingTest ? "Sending..." : "Send test"}
             </Text>
-          </Pressable>
+          </GlassPressable>
         ) : null}
       </View>
 
@@ -144,9 +154,13 @@ export function NotificationCenter(): React.JSX.Element {
           <View style={styles.modalSheet}>
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>Notifications</Text>
-              <Pressable onPress={closeModal} style={styles.closeButton}>
+              <GlassPressable
+                onPress={closeModal}
+                surfaceStyle={styles.closeButton}
+                pressedSurfaceStyle={styles.controlPressed}
+              >
                 <Text style={styles.closeButtonText}>Close</Text>
-              </Pressable>
+              </GlassPressable>
             </View>
 
             {errorMessage.length > 0 ? <Text style={styles.statusText}>{errorMessage}</Text> : null}
@@ -160,12 +174,13 @@ export function NotificationCenter(): React.JSX.Element {
               ListFooterComponent={
                 <View>
                   {status === "CanLoadMore" ? (
-                    <Pressable
+                    <GlassPressable
                       onPress={() => loadMore(16)}
-                      style={styles.loadMoreButton}
+                      surfaceStyle={styles.loadMoreButton}
+                      pressedSurfaceStyle={styles.controlPressed}
                     >
                       <Text style={styles.loadMoreText}>Load More</Text>
-                    </Pressable>
+                    </GlassPressable>
                   ) : null}
                 </View>
               }
