@@ -7,6 +7,8 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Ticket, TicketWithHistory } from "../tickets/types";
 import { AppScreen } from "../../ui/AppScreen";
+import { CampusCareIllustration } from "../../ui/CampusCareIllustration";
+import { GlassPressable } from "../../ui/GlassSurface";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
@@ -129,20 +131,46 @@ function ResolverHomeHeader({
             </Text>
             <Text style={styles.signedInText}>{email}</Text>
           </View>
-          <View style={styles.headerActions}>
+          <View style={styles.headerVisualColumn}>
+            <CampusCareIllustration
+              accessibilityLabel="Resolver progress illustration"
+              name="resolverProgress"
+              style={styles.heroIllustration}
+            />
             {onSwitchToReporter ? (
-              <Pressable onPress={onSwitchToReporter} style={styles.workspaceButton}>
+              <GlassPressable
+                onPress={onSwitchToReporter}
+                surfaceStyle={styles.workspaceButton}
+                pressedSurfaceStyle={styles.controlPressed}
+              >
                 <Text style={styles.workspaceButtonText}>Go Reporter</Text>
-              </Pressable>
+              </GlassPressable>
             ) : null}
-            <Pressable onPress={onSignOut} style={styles.signOutButton}>
+            <GlassPressable
+              onPress={onSignOut}
+              surfaceStyle={styles.signOutButton}
+              pressedSurfaceStyle={styles.controlPressed}
+            >
               <Text style={styles.signOutText}>Sign out</Text>
-            </Pressable>
+            </GlassPressable>
           </View>
         </View>
       </View>
       <NotificationCenter />
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+    </View>
+  );
+}
+
+function ResolverEmptyState(): React.JSX.Element {
+  return (
+    <View style={styles.emptyState}>
+      <CampusCareIllustration
+        accessibilityLabel="Assignment queue illustration"
+        name="managerAssignment"
+        style={styles.emptyIllustration}
+      />
+      <Text style={styles.emptyText}>No tickets are assigned to you yet.</Text>
     </View>
   );
 }
@@ -154,9 +182,13 @@ function ResolverListFooter({
   return (
     <View style={styles.footerSpace}>
       {canLoadMore ? (
-        <Pressable onPress={onLoadMore} style={styles.secondaryButton}>
+        <GlassPressable
+          onPress={onLoadMore}
+          surfaceStyle={styles.secondaryButton}
+          pressedSurfaceStyle={styles.controlPressed}
+        >
           <Text style={styles.secondaryButtonText}>Load More</Text>
-        </Pressable>
+        </GlassPressable>
       ) : null}
     </View>
   );
@@ -214,32 +246,36 @@ function InProgressTicketActions({
         multiline
       />
       <View style={styles.imageActionRow}>
-        <Pressable
+        <GlassPressable
           onPress={() => onPickImage("camera")}
           disabled={imageActionDisabled}
-          style={[
+          containerStyle={styles.imageActionButton}
+          surfaceStyle={[
             styles.secondaryButton,
             styles.imageActionButton,
-            imageActionDisabled ? styles.buttonDisabled : null,
           ]}
+          pressedSurfaceStyle={styles.controlPressed}
+          disabledSurfaceStyle={styles.controlDisabled}
         >
           <Text style={styles.secondaryButtonText}>
             {imageSelectionSource === "camera" ? "Opening..." : "Take Photo"}
           </Text>
-        </Pressable>
-        <Pressable
+        </GlassPressable>
+        <GlassPressable
           onPress={() => onPickImage("library")}
           disabled={imageActionDisabled}
-          style={[
+          containerStyle={styles.imageActionButton}
+          surfaceStyle={[
             styles.secondaryButton,
             styles.imageActionButton,
-            imageActionDisabled ? styles.buttonDisabled : null,
           ]}
+          pressedSurfaceStyle={styles.controlPressed}
+          disabledSurfaceStyle={styles.controlDisabled}
         >
           <Text style={styles.secondaryButtonText}>
             {imageSelectionSource === "library" ? "Opening..." : "Choose Library"}
           </Text>
-        </Pressable>
+        </GlassPressable>
       </View>
       {resolutionImage ? (
         <>
@@ -248,15 +284,17 @@ function InProgressTicketActions({
             style={styles.resolutionPreviewImage}
             onPress={() => onOpenImage(resolutionImage.uri)}
           />
-          <Pressable
+          <GlassPressable
             onPress={onRemoveImage}
             disabled={isProcessing}
-            style={[styles.secondaryButton, isProcessing ? styles.buttonDisabled : null]}
+            surfaceStyle={styles.secondaryButton}
+            pressedSurfaceStyle={styles.controlPressed}
+            disabledSurfaceStyle={styles.controlDisabled}
           >
             <Text style={styles.secondaryButtonText}>
               Remove Attached Resolution Photo
             </Text>
-          </Pressable>
+          </GlassPressable>
         </>
       ) : null}
       <Pressable
@@ -636,9 +674,7 @@ export function ResolverHome(props: {
             onSwitchToReporter={props.onSwitchToReporter}
           />
         }
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No tickets are assigned to you yet.</Text>
-        }
+        ListEmptyComponent={<ResolverEmptyState />}
         ListFooterComponent={
           <ResolverListFooter
             canLoadMore={status === "CanLoadMore"}

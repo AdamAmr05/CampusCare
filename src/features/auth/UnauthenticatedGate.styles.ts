@@ -14,6 +14,19 @@ export const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3,
   },
+  heroTopRow: {
+    minHeight: 112,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  heroIllustration: {
+    marginRight: -6,
+    marginTop: -18,
+    height: 138,
+    width: 138,
+  },
   badge: {
     alignSelf: "flex-start",
     paddingHorizontal: 10,

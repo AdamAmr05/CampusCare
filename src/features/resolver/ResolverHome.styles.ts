@@ -22,9 +22,16 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
-  headerActions: {
+  headerVisualColumn: {
     alignItems: "flex-end",
     gap: 8,
+  },
+  heroIllustration: {
+    height: 96,
+    marginBottom: 2,
+    marginRight: -6,
+    marginTop: -14,
+    width: 96,
   },
   headerMeta: {
     flex: 1,
@@ -57,7 +64,7 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -71,7 +78,7 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.black,
-    backgroundColor: "#fff2b8",
+    backgroundColor: theme.colors.glassFallbackActive,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -167,7 +174,7 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingVertical: 12,
     alignItems: "center",
   },
@@ -205,9 +212,26 @@ export const styles = StyleSheet.create({
     marginTop: 8,
     color: theme.colors.textMuted,
     fontSize: 14,
+    textAlign: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  emptyIllustration: {
+    height: 112,
+    width: 112,
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  controlPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  controlDisabled: {
+    borderColor: "rgba(111, 103, 91, 0.28)",
+    backgroundColor: "rgba(255, 255, 255, 0.48)",
   },
   footerSpace: {
     paddingVertical: 8,

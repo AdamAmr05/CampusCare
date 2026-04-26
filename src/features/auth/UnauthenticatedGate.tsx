@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { OnboardingIntent } from "../../domain/types";
 import { AppScreen } from "../../ui/AppScreen";
+import { CampusCareIllustration } from "../../ui/CampusCareIllustration";
 import { AuthForm } from "./AuthForm";
 import { styles } from "./UnauthenticatedGate.styles";
 
@@ -21,7 +22,14 @@ export function UnauthenticatedGate(props: {
     return (
       <AppScreen>
         <View style={styles.heroCard}>
-          <Text style={styles.badge}>CampusCare GIU</Text>
+          <View style={styles.heroTopRow}>
+            <Text style={styles.badge}>CampusCare GIU</Text>
+            <CampusCareIllustration
+              accessibilityLabel="Ticket reporting illustration"
+              name="ticketReport"
+              style={styles.heroIllustration}
+            />
+          </View>
           <Text style={styles.title}>Report Campus Issues Fast</Text>
           <Text style={styles.subtitle}>
             Secure access with verified GIU email. Track every issue through assignment, work, and

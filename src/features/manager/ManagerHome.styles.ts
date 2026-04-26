@@ -21,6 +21,17 @@ export const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  headerVisualColumn: {
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  heroIllustration: {
+    height: 96,
+    marginBottom: 2,
+    marginRight: -6,
+    marginTop: -14,
+    width: 96,
+  },
   eyebrow: {
     fontSize: 12,
     fontWeight: "800",
@@ -53,7 +64,7 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -71,13 +82,13 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.glassFallback,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
   tabButtonActive: {
     borderColor: theme.colors.black,
-    backgroundColor: "#fff1b8",
+    backgroundColor: theme.colors.glassFallbackActive,
   },
   tabText: {
     color: theme.colors.textSecondary,
@@ -138,13 +149,13 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: "#fffdf4",
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   resolverChipActive: {
     borderColor: theme.colors.black,
-    backgroundColor: "#ffe79b",
+    backgroundColor: theme.colors.glassFallbackActive,
   },
   resolverChipText: {
     color: theme.colors.textSecondary,
@@ -179,7 +190,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingVertical: 10,
     alignItems: "center",
   },
@@ -204,10 +215,27 @@ export const styles = StyleSheet.create({
   halfButton: {
     flex: 1,
   },
+  controlPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  controlDisabled: {
+    borderColor: "rgba(111, 103, 91, 0.28)",
+    backgroundColor: "rgba(255, 255, 255, 0.48)",
+  },
   emptyText: {
     marginTop: 8,
     color: theme.colors.textMuted,
     fontSize: 14,
+    textAlign: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  emptyIllustration: {
+    height: 112,
+    width: 112,
   },
   footerSpace: {
     paddingVertical: 8,

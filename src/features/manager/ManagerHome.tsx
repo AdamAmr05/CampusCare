@@ -29,6 +29,11 @@ import {
 } from "../tickets/utils";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { AppScreen } from "../../ui/AppScreen";
+import {
+  CampusCareIllustration,
+  type CampusCareIllustrationName,
+} from "../../ui/CampusCareIllustration";
+import { GlassPressable, getActiveGlassTint } from "../../ui/GlassSurface";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { styles } from "./ManagerHome.styles";
@@ -134,6 +139,19 @@ function getManagerEmptyMessage(activeTab: ManagerTab): string {
   }
 }
 
+function getManagerEmptyIllustration(
+  activeTab: ManagerTab,
+): CampusCareIllustrationName {
+  switch (activeTab) {
+    case "resolver_requests":
+      return "managerAssignment";
+    case "assign_tickets":
+      return "campusLocation";
+    case "close_tickets":
+      return "ticketClosed";
+  }
+}
+
 function ManagerHeader({
   activeTab,
   email,
@@ -153,21 +171,34 @@ function ManagerHeader({
             </Text>
             <Text style={styles.metaText}>{email}</Text>
           </View>
-          <Pressable onPress={onSignOut} style={styles.signOutButton}>
-            <Text style={styles.signOutText}>Sign out</Text>
-          </Pressable>
+          <View style={styles.headerVisualColumn}>
+            <CampusCareIllustration
+              accessibilityLabel="Manager assignment illustration"
+              name="managerAssignment"
+              style={styles.heroIllustration}
+            />
+            <GlassPressable
+              onPress={onSignOut}
+              surfaceStyle={styles.signOutButton}
+              pressedSurfaceStyle={styles.controlPressed}
+            >
+              <Text style={styles.signOutText}>Sign out</Text>
+            </GlassPressable>
+          </View>
         </View>
       </View>
 
       <NotificationCenter />
 
       <View style={styles.tabsRow}>
-        <Pressable
+        <GlassPressable
           onPress={() => onSelectTab("resolver_requests")}
-          style={[
+          surfaceStyle={[
             styles.tabButton,
             activeTab === "resolver_requests" ? styles.tabButtonActive : null,
           ]}
+          pressedSurfaceStyle={styles.controlPressed}
+          tintColor={getActiveGlassTint(activeTab === "resolver_requests")}
         >
           <Text
             style={[
@@ -177,13 +208,15 @@ function ManagerHeader({
           >
             Resolver Requests
           </Text>
-        </Pressable>
-        <Pressable
+        </GlassPressable>
+        <GlassPressable
           onPress={() => onSelectTab("assign_tickets")}
-          style={[
+          surfaceStyle={[
             styles.tabButton,
             activeTab === "assign_tickets" ? styles.tabButtonActive : null,
           ]}
+          pressedSurfaceStyle={styles.controlPressed}
+          tintColor={getActiveGlassTint(activeTab === "assign_tickets")}
         >
           <Text
             style={[
@@ -193,13 +226,15 @@ function ManagerHeader({
           >
             Assign Open Tickets
           </Text>
-        </Pressable>
-        <Pressable
+        </GlassPressable>
+        <GlassPressable
           onPress={() => onSelectTab("close_tickets")}
-          style={[
+          surfaceStyle={[
             styles.tabButton,
             activeTab === "close_tickets" ? styles.tabButtonActive : null,
           ]}
+          pressedSurfaceStyle={styles.controlPressed}
+          tintColor={getActiveGlassTint(activeTab === "close_tickets")}
         >
           <Text
             style={[
@@ -209,7 +244,7 @@ function ManagerHeader({
           >
             Close Resolved
           </Text>
-        </Pressable>
+        </GlassPressable>
       </View>
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -256,17 +291,19 @@ function ResolverRequestCard({
         >
           <Text style={styles.primaryButtonText}>Approve</Text>
         </Pressable>
-        <Pressable
+        <GlassPressable
           disabled={isProcessing}
           onPress={onReject}
-          style={[
+          containerStyle={styles.halfButton}
+          surfaceStyle={[
             styles.secondaryButton,
             styles.halfButton,
-            isProcessing ? styles.disabled : null,
           ]}
+          pressedSurfaceStyle={styles.controlPressed}
+          disabledSurfaceStyle={styles.controlDisabled}
         >
           <Text style={styles.secondaryButtonText}>Reject</Text>
-        </Pressable>
+        </GlassPressable>
       </View>
     </View>
   );
@@ -334,13 +371,15 @@ function OpenTicketAssignmentCard({
       <Text style={styles.smallLabel}>Assign Resolver</Text>
       <View style={styles.resolverChipRow}>
         {activeResolvers.map((resolver) => (
-          <Pressable
+          <GlassPressable
             key={resolver._id}
-            style={[
+            surfaceStyle={[
               styles.resolverChip,
               selectedResolverId === resolver._id ? styles.resolverChipActive : null,
             ]}
             onPress={() => onSelectResolver(resolver._id)}
+            pressedSurfaceStyle={styles.controlPressed}
+            tintColor={getActiveGlassTint(selectedResolverId === resolver._id)}
           >
             <Text
               style={[
@@ -352,7 +391,7 @@ function OpenTicketAssignmentCard({
             >
               {resolver.fullName}
             </Text>
-          </Pressable>
+          </GlassPressable>
         ))}
       </View>
 
@@ -448,15 +487,26 @@ function ManagerTabPanel({
   const listFooter = (
     <View style={styles.footerSpace}>
       {showLoadMore ? (
-        <Pressable onPress={onLoadMore} style={styles.secondaryButton}>
+        <GlassPressable
+          onPress={onLoadMore}
+          surfaceStyle={styles.secondaryButton}
+          pressedSurfaceStyle={styles.controlPressed}
+        >
           <Text style={styles.secondaryButtonText}>Load More</Text>
-        </Pressable>
+        </GlassPressable>
       ) : null}
     </View>
   );
 
   const listEmpty = (
-    <Text style={styles.emptyText}>{getManagerEmptyMessage(activeTab)}</Text>
+    <View style={styles.emptyState}>
+      <CampusCareIllustration
+        accessibilityLabel="Empty queue illustration"
+        name={getManagerEmptyIllustration(activeTab)}
+        style={styles.emptyIllustration}
+      />
+      <Text style={styles.emptyText}>{getManagerEmptyMessage(activeTab)}</Text>
+    </View>
   );
 
   switch (activeTab) {

@@ -10,6 +10,8 @@ import {
   type RoomOption,
 } from "../../domain/reference/rooms/rooms";
 import { AppScreen } from "../../ui/AppScreen";
+import { CampusCareIllustration } from "../../ui/CampusCareIllustration";
+import { GlassPressable, getActiveGlassTint } from "../../ui/GlassSurface";
 import { theme } from "../../ui/theme";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
@@ -88,20 +90,33 @@ function ReporterWorkspaceHero({
           <Text style={styles.eyebrow}>Reporter Workspace</Text>
           <Text style={styles.title}>Create and Track Tickets</Text>
           <Text style={styles.subtitle}>
-            White mode with German palette: bold black primary, yellow secondary,
-            red accents.
+            Report campus facility issues quickly, then follow assignment,
+            progress, and closure from one place.
           </Text>
           <Text style={styles.signedInText}>{email}</Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={styles.headerVisualColumn}>
+          <CampusCareIllustration
+            accessibilityLabel="Campus ticket illustration"
+            name="ticketReport"
+            style={styles.heroIllustration}
+          />
           {onSwitchToResolver ? (
-            <Pressable onPress={onSwitchToResolver} style={styles.workspaceButton}>
+            <GlassPressable
+              onPress={onSwitchToResolver}
+              surfaceStyle={styles.workspaceButton}
+              pressedSurfaceStyle={styles.controlPressed}
+            >
               <Text style={styles.workspaceButtonText}>Go Resolver</Text>
-            </Pressable>
+            </GlassPressable>
           ) : null}
-          <Pressable onPress={onSignOut} style={styles.signOutButton}>
+          <GlassPressable
+            onPress={onSignOut}
+            surfaceStyle={styles.signOutButton}
+            pressedSurfaceStyle={styles.controlPressed}
+          >
             <Text style={styles.signOutText}>Sign out</Text>
-          </Pressable>
+          </GlassPressable>
         </View>
       </View>
     </View>
@@ -127,7 +142,19 @@ function ReporterTicketComposer({
 }: ReporterTicketComposerProps): React.JSX.Element {
   return (
     <View style={styles.formCard}>
-      <Text style={styles.sectionTitle}>New Ticket</Text>
+      <View style={styles.composerHeaderRow}>
+        <View style={styles.composerTitleBlock}>
+          <Text style={styles.sectionTitle}>New Ticket</Text>
+          <Text style={styles.formHintText}>
+            Photo, category, room, and a short description.
+          </Text>
+        </View>
+        <CampusCareIllustration
+          accessibilityLabel="Maintenance tools illustration"
+          name="maintenanceTools"
+          style={styles.composerIllustration}
+        />
+      </View>
       <TextInput
         value={category}
         onChangeText={onCategoryChange}
@@ -135,7 +162,11 @@ function ReporterTicketComposer({
         placeholder="Category (e.g. Electrical)"
         placeholderTextColor={theme.colors.textMuted}
       />
-      <Pressable onPress={onOpenRoomSelector} style={styles.selectorInput}>
+      <GlassPressable
+        onPress={onOpenRoomSelector}
+        surfaceStyle={styles.selectorInput}
+        pressedSurfaceStyle={styles.controlPressed}
+      >
         <View style={styles.selectorInputRow}>
           <Text
             style={selectedRoom ? styles.selectorValueText : styles.selectorPlaceholderText}
@@ -145,7 +176,7 @@ function ReporterTicketComposer({
           </Text>
           <Text style={styles.selectorActionText}>Open</Text>
         </View>
-      </Pressable>
+      </GlassPressable>
       {selectedRoom ? (
         <View style={styles.selectedRoomMetaRow}>
           <Text style={styles.selectedRoomMetaText}>
@@ -202,32 +233,36 @@ function ReporterImageSourceButtons({
 }: ReporterImageSourceButtonsProps): React.JSX.Element {
   return (
     <View style={styles.imageActionRow}>
-      <Pressable
+      <GlassPressable
         onPress={() => onSelectImageSource("camera")}
         disabled={imageSelectionDisabled}
-        style={[
+        containerStyle={styles.imageActionButton}
+        surfaceStyle={[
           styles.secondaryButton,
           styles.imageActionButton,
-          imageSelectionDisabled ? styles.buttonDisabled : null,
         ]}
+        pressedSurfaceStyle={styles.controlPressed}
+        disabledSurfaceStyle={styles.controlDisabled}
       >
         <Text style={styles.secondaryButtonText}>
           {imageSelectionSource === "camera" ? "Opening..." : "Take Photo"}
         </Text>
-      </Pressable>
-      <Pressable
+      </GlassPressable>
+      <GlassPressable
         onPress={() => onSelectImageSource("library")}
         disabled={imageSelectionDisabled}
-        style={[
+        containerStyle={styles.imageActionButton}
+        surfaceStyle={[
           styles.secondaryButton,
           styles.imageActionButton,
-          imageSelectionDisabled ? styles.buttonDisabled : null,
         ]}
+        pressedSurfaceStyle={styles.controlPressed}
+        disabledSurfaceStyle={styles.controlDisabled}
       >
         <Text style={styles.secondaryButtonText}>
           {imageSelectionSource === "library" ? "Opening..." : "Choose Library"}
         </Text>
-      </Pressable>
+      </GlassPressable>
     </View>
   );
 }
@@ -239,10 +274,28 @@ function ReporterLoadMoreFooter({
   return (
     <View style={styles.footerSpace}>
       {canLoadMore ? (
-        <Pressable onPress={onLoadMore} style={styles.secondaryButton}>
+        <GlassPressable
+          onPress={onLoadMore}
+          surfaceStyle={styles.secondaryButton}
+          pressedSurfaceStyle={styles.controlPressed}
+        >
           <Text style={styles.secondaryButtonText}>Load More</Text>
-        </Pressable>
+        </GlassPressable>
       ) : null}
+    </View>
+  );
+}
+
+function ReporterEmptyState(): React.JSX.Element {
+  return (
+    <View style={styles.ticketListEmptyState}>
+      <CampusCareIllustration
+        accessibilityLabel="Closed ticket illustration"
+        name="ticketClosed"
+        style={styles.emptyIllustration}
+      />
+      <Text style={styles.emptyTitle}>No tickets yet</Text>
+      <Text style={styles.emptyText}>Submit your first issue when something needs attention.</Text>
     </View>
   );
 }
@@ -266,9 +319,13 @@ function ReporterRoomSelector({
     <View style={styles.roomSelectorScreen}>
       <View style={styles.roomSelectorHeader}>
         <Text style={styles.modalTitle}>Select Room</Text>
-        <Pressable onPress={onClose} style={styles.modalCloseButton}>
+        <GlassPressable
+          onPress={onClose}
+          surfaceStyle={styles.modalCloseButton}
+          pressedSurfaceStyle={styles.controlPressed}
+        >
           <Text style={styles.modalCloseButtonText}>Close</Text>
-        </Pressable>
+        </GlassPressable>
       </View>
 
       <View style={styles.roomSelectorContent}>
@@ -284,12 +341,14 @@ function ReporterRoomSelector({
 
         <Text style={styles.filterLabel}>Building</Text>
         <View style={styles.chipGrid}>
-          <Pressable
+          <GlassPressable
             onPress={() => onSelectBuilding(null)}
-            style={[
+            surfaceStyle={[
               styles.filterChip,
               selectedBuilding === null ? styles.filterChipActive : null,
             ]}
+            pressedSurfaceStyle={styles.controlPressed}
+            tintColor={getActiveGlassTint(selectedBuilding === null)}
           >
             <Text
               maxFontSizeMultiplier={1.2}
@@ -300,15 +359,17 @@ function ReporterRoomSelector({
             >
               All
             </Text>
-          </Pressable>
+          </GlassPressable>
           {roomDirectory.buildings.map((building) => (
-            <Pressable
+            <GlassPressable
               key={building}
               onPress={() => onSelectBuilding(building)}
-              style={[
+              surfaceStyle={[
                 styles.filterChip,
                 selectedBuilding === building ? styles.filterChipActive : null,
               ]}
+              pressedSurfaceStyle={styles.controlPressed}
+              tintColor={getActiveGlassTint(selectedBuilding === building)}
             >
               <Text
                 maxFontSizeMultiplier={1.2}
@@ -319,7 +380,7 @@ function ReporterRoomSelector({
               >
                 {building}
               </Text>
-            </Pressable>
+            </GlassPressable>
           ))}
         </View>
 
@@ -327,13 +388,15 @@ function ReporterRoomSelector({
           <>
             <Text style={styles.filterLabel}>Floor (optional)</Text>
             <View style={styles.chipGrid}>
-              <Pressable
+              <GlassPressable
                 onPress={() => onSelectFloor(null)}
-                style={[
+                surfaceStyle={[
                   styles.filterChip,
                   styles.filterChipWide,
                   selectedFloor === null ? styles.filterChipActive : null,
                 ]}
+                pressedSurfaceStyle={styles.controlPressed}
+                tintColor={getActiveGlassTint(selectedFloor === null)}
               >
                 <Text
                   maxFontSizeMultiplier={1.2}
@@ -344,15 +407,17 @@ function ReporterRoomSelector({
                 >
                   All Floors
                 </Text>
-              </Pressable>
+              </GlassPressable>
               {availableFloors.map((floor) => (
-                <Pressable
+                <GlassPressable
                   key={floor}
                   onPress={() => onSelectFloor(floor)}
-                  style={[
+                  surfaceStyle={[
                     styles.filterChip,
                     selectedFloor === floor ? styles.filterChipActive : null,
                   ]}
+                  pressedSurfaceStyle={styles.controlPressed}
+                  tintColor={getActiveGlassTint(selectedFloor === floor)}
                 >
                   <Text
                     maxFontSizeMultiplier={1.2}
@@ -363,7 +428,7 @@ function ReporterRoomSelector({
                   >
                     Floor {floor}
                   </Text>
-                </Pressable>
+                </GlassPressable>
               ))}
             </View>
           </>
@@ -686,7 +751,7 @@ export function ReporterHome(props: {
         keyExtractor={keyExtractor}
         renderItem={renderTicket}
         ListHeaderComponent={listHeader}
-        ListEmptyComponent={<Text style={styles.emptyText}>No tickets yet. Submit your first issue.</Text>}
+        ListEmptyComponent={<ReporterEmptyState />}
         contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
         showsVerticalScrollIndicator={false}
         ListFooterComponent={

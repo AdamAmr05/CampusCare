@@ -22,9 +22,16 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
-  headerActions: {
+  headerVisualColumn: {
     alignItems: "flex-end",
     gap: 8,
+  },
+  heroIllustration: {
+    height: 96,
+    marginBottom: 2,
+    marginRight: -6,
+    marginTop: -14,
+    width: 96,
   },
   headerMeta: {
     flex: 1,
@@ -57,7 +64,7 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -71,7 +78,7 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.black,
-    backgroundColor: "#fff2b8",
+    backgroundColor: theme.colors.glassFallbackActive,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -93,6 +100,29 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     color: theme.colors.textPrimary,
   },
+  composerHeaderRow: {
+    minHeight: 86,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  composerTitleBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  formHintText: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  composerIllustration: {
+    height: 92,
+    marginRight: -8,
+    marginTop: -14,
+    width: 92,
+  },
   input: {
     borderRadius: 11,
     borderWidth: 1,
@@ -107,7 +137,7 @@ export const styles = StyleSheet.create({
     borderRadius: 11,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: "#fffdf4",
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingHorizontal: 12,
     paddingVertical: 11,
   },
@@ -172,7 +202,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     paddingVertical: 10,
     alignItems: "center",
   },
@@ -261,6 +291,21 @@ export const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 14,
   },
+  ticketListEmptyState: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  emptyIllustration: {
+    height: 116,
+    width: 116,
+  },
+  emptyTitle: {
+    marginTop: 2,
+    color: theme.colors.textPrimary,
+    fontSize: 17,
+    fontWeight: "900",
+  },
   footerSpace: {
     paddingVertical: 8,
   },
@@ -315,7 +360,7 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
     minHeight: 42,
     minWidth: 56,
     paddingHorizontal: 14,
@@ -328,7 +373,7 @@ export const styles = StyleSheet.create({
   },
   filterChipActive: {
     borderColor: theme.colors.black,
-    backgroundColor: "#fff2b8",
+    backgroundColor: theme.colors.glassFallbackActive,
   },
   filterChipText: {
     fontSize: 16,
@@ -405,7 +450,14 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.glassFallbackMuted,
+  },
+  controlPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  controlDisabled: {
+    borderColor: "rgba(111, 103, 91, 0.28)",
+    backgroundColor: "rgba(255, 255, 255, 0.48)",
   },
   modalCloseButtonText: {
     color: theme.colors.red,
