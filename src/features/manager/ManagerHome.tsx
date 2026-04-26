@@ -9,6 +9,7 @@ import { theme } from "../../ui/theme";
 import {
   WorkspaceEmptyState,
   WorkspaceHero,
+  WorkspaceListSkeleton,
   WorkspaceLoadMoreFooter,
   WorkspaceTicketCard,
 } from "../../ui/workspace";
@@ -24,6 +25,7 @@ import type {
 } from "../tickets/types";
 import { ManagerActionHint } from "./components/ManagerActionHint";
 import { ManagerActionSheet } from "./components/ManagerActionSheet";
+import { ManagerRequestCardSkeleton } from "./components/ManagerRequestCardSkeleton";
 import { ManagerResolverRequestCard } from "./components/ManagerResolverRequestCard";
 import { ManagerTabBar, type ManagerTab } from "./components/ManagerTabBar";
 
@@ -236,11 +238,26 @@ export function ManagerHome({
           />
         }
         ListEmptyComponent={
-          <WorkspaceEmptyState
-            illustration={getEmptyIllustration(state.activeTab)}
-            title={getEmptyTitle(state.activeTab)}
-            body={getEmptyBody(state.activeTab)}
-          />
+          activeStatus === "LoadingFirstPage" ? (
+            <WorkspaceListSkeleton
+              renderRow={
+                state.activeTab === "approvals"
+                  ? (key, progress) => (
+                      <ManagerRequestCardSkeleton
+                        key={key}
+                        progress={progress}
+                      />
+                    )
+                  : undefined
+              }
+            />
+          ) : (
+            <WorkspaceEmptyState
+              illustration={getEmptyIllustration(state.activeTab)}
+              title={getEmptyTitle(state.activeTab)}
+              body={getEmptyBody(state.activeTab)}
+            />
+          )
         }
         ListFooterComponent={
           <WorkspaceLoadMoreFooter
