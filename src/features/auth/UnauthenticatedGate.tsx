@@ -30,16 +30,16 @@ export function UnauthenticatedGate(props: {
   }
 
   return (
-    <AppScreen>
+    <AppScreen scroll contentContainerStyle={styles.screenContent}>
       <View style={styles.cardWrapper}>
+        <CardHeader />
         <View style={styles.heroCard}>
-          <CardHeader />
           <CardBody
             onContinueAsReporter={() => continueWithIntent("reporter")}
             onResolverAccess={() => continueWithIntent("resolver")}
           />
-          <CardFooter />
         </View>
+        <CardFooter />
       </View>
     </AppScreen>
   );
@@ -48,14 +48,9 @@ export function UnauthenticatedGate(props: {
 function CardHeader(): React.JSX.Element {
   return (
     <View style={styles.headerZone}>
-      <View style={styles.wordmarkBlock}>
-        <Text style={styles.wordmark}>CampusCare</Text>
-        <Text style={styles.wordmarkAccent}>GIU</Text>
-        <View style={styles.wordmarkUnderline} />
-      </View>
       <CampusCareIllustration
-        accessibilityLabel="Ticket reporting illustration"
-        name="ticketReport"
+        accessibilityLabel="CampusCare GIU welcome illustration"
+        name="welcomeCampus"
         style={styles.heroIllustration}
       />
     </View>

@@ -3,6 +3,7 @@ import React from "react";
 import { StyleSheet, type ImageStyle, type StyleProp } from "react-native";
 
 export type CampusCareIllustrationName =
+  | "welcomeCampus"
   | "ticketReport"
   | "campusLocation"
   | "maintenanceTools"
@@ -11,6 +12,7 @@ export type CampusCareIllustrationName =
   | "ticketClosed";
 
 const illustrationSources = {
+  welcomeCampus: require("../../assets/illustrations/welcome-campus.png"),
   ticketReport: require("../../assets/illustrations/ticket-report.png"),
   campusLocation: require("../../assets/illustrations/campus-location.png"),
   maintenanceTools: require("../../assets/illustrations/maintenance-tools.png"),

@@ -2,8 +2,18 @@ import { StyleSheet } from "react-native";
 import { theme } from "../../ui/theme";
 
 export const styles = StyleSheet.create({
+  screenContent: {
+    justifyContent: "center",
+    paddingTop: 12,
+    paddingBottom: 40,
+  },
   cardWrapper: {
+    width: "100%",
+    maxWidth: 430,
+    alignSelf: "center",
     paddingHorizontal: 4,
+    gap: 10,
+    transform: [{ translateY: -22 }],
   },
   heroCard: {
     borderRadius: 28,
@@ -18,55 +28,17 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // ── Header zone (cream, wordmark + illustration) ──────────────────────────
+  // ── Header artwork (transparent integrated welcome illustration) ──────────
   headerZone: {
-    minHeight: 132,
-    paddingTop: 22,
-    paddingLeft: 22,
-    paddingRight: 0,
-    paddingBottom: 14,
-    backgroundColor: theme.colors.surfaceMuted,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderSoft,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    overflow: "hidden",
-  },
-  wordmarkBlock: {
-    paddingTop: 4,
-    flexDirection: "row",
-    alignItems: "baseline",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  wordmark: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: theme.colors.textPrimary,
-    letterSpacing: -0.4,
-  },
-  wordmarkAccent: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: theme.colors.yellowDeep,
-    letterSpacing: -0.4,
-  },
-  wordmarkUnderline: {
-    width: 28,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.yellow,
-    marginTop: 6,
-    flexBasis: "100%",
+    justifyContent: "center",
+    minHeight: 176,
+    marginBottom: -10,
   },
   heroIllustration: {
-    height: 152,
-    width: 152,
-    marginRight: -22,
-    marginTop: -8,
-    transform: [{ rotate: "-4deg" }],
+    height: 176,
+    width: "100%",
+    maxWidth: 422,
   },
 
   // ── Body zone (white, title + CTA) ────────────────────────────────────────
@@ -134,11 +106,8 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    backgroundColor: theme.colors.surfaceMuted,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderSoft,
+    paddingVertical: 2,
+    paddingHorizontal: 12,
   },
   footerText: {
     color: theme.colors.textMuted,
