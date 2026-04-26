@@ -1,95 +1,42 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import type { Ticket, TicketWithHistory } from "../tickets/types";
 import { AppScreen } from "../../ui/AppScreen";
-import { CampusCareIllustration } from "../../ui/CampusCareIllustration";
-import { GlassPressable } from "../../ui/GlassSurface";
 import { theme } from "../../ui/theme";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspaceLoadMoreFooter,
+  WorkspaceTicketCard,
+} from "../../ui/workspace";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
 import { TicketDetailsPanel } from "../tickets/TicketDetailsPanel";
-import { TicketImagePreview } from "../tickets/TicketImagePreview";
-import { NotificationCenter } from "../notifications/NotificationCenter";
+import type { Ticket, TicketWithHistory } from "../tickets/types";
 import {
   selectTicketImage,
   type TicketImageAsset,
   type TicketImageSource,
 } from "../tickets/ticketImageSelection";
 import { uploadTicketImage } from "../tickets/uploadTicketImage";
-import {
-  formatTimestamp,
-  getTicketStatusColors,
-  getTicketStatusLabel,
-} from "../tickets/utils";
-import { styles } from "./ResolverHome.styles";
+import { ResolverActionHint } from "./components/ResolverActionHint";
+import { ResolverActionSheet } from "./components/ResolverActionSheet";
 
-type ResolutionImageSelectionTarget = {
-  ticketId: string;
-  source: TicketImageSource;
-};
-
-type ResolverHomeHeaderProps = {
+type Props = {
   email: string;
-  errorMessage: string;
   onSignOut: () => void;
   onSwitchToReporter?: () => void;
 };
 
-type ResolverListFooterProps = {
-  canLoadMore: boolean;
-  onLoadMore: () => void;
+type ImageSelectionTarget = {
+  ticketId: string;
+  source: TicketImageSource;
 };
 
-type AssignedTicketActionsProps = {
-  isProcessing: boolean;
-  note: string;
-  onNoteChange: (value: string) => void;
-  onStartWork: () => void;
-};
-
-type InProgressTicketActionsProps = {
-  imageSelectionSource: TicketImageSource | null;
-  isProcessing: boolean;
-  note: string;
-  resolutionImage: TicketImageAsset | null;
-  onNoteChange: (value: string) => void;
-  onOpenImage: (imageUri: string) => void;
-  onPickImage: (source: TicketImageSource) => void;
-  onRemoveImage: () => void;
-  onResolve: () => void;
-};
-
-type ResolvedTicketActionsProps = {
-  resolutionImageUrl: string | null;
-  onOpenImage: (imageUri: string) => void;
-};
-
-type ResolverTicketCardProps = {
-  imageSelectionSource: TicketImageSource | null;
-  isProcessing: boolean;
-  progressNote: string;
-  resolutionImage: TicketImageAsset | null;
-  resolutionNote: string;
-  ticket: Ticket;
-  onOpenDetails: (ticket: Ticket) => void;
-  onOpenLightbox: (imageUri: string) => void;
-  onProgressNoteChange: (value: string) => void;
-  onResolutionNoteChange: (value: string) => void;
-  onSelectResolutionImage: (source: TicketImageSource) => void;
-  onRemoveResolutionImage: () => void;
-  onResolve: () => void;
-  onStartWork: () => void;
-};
-
-function createInProgressMutationArgs(
-  ticketId: Id<"tickets">,
-  note: string,
-) {
+function createInProgressArgs(ticketId: Id<"tickets">, note: string) {
   return note.length > 0 ? { ticketId, note } : { ticketId };
 }
 
@@ -99,341 +46,26 @@ function createMarkResolvedArgs(
   resolutionImageStorageId: Id<"_storage"> | null,
 ) {
   if (resolutionImageStorageId === null) {
-    return {
-      ticketId,
-      resolutionNote,
-    };
+    return { ticketId, resolutionNote };
   }
+  return { ticketId, resolutionNote, resolutionImageStorageId };
+}
 
+function buildSwitchTo(
+  onSwitchToReporter: (() => void) | undefined,
+): { label: string; onPress: () => void } | undefined {
+  if (!onSwitchToReporter) return undefined;
   return {
-    ticketId,
-    resolutionNote,
-    resolutionImageStorageId,
+    label: "Switch to Reporter (dev)",
+    onPress: onSwitchToReporter,
   };
 }
 
-function ResolverHomeHeader({
+export function ResolverHome({
   email,
-  errorMessage,
   onSignOut,
   onSwitchToReporter,
-}: ResolverHomeHeaderProps): React.JSX.Element {
-  return (
-    <View style={styles.listHeader}>
-      <View style={styles.heroCard}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerMeta}>
-            <Text style={styles.eyebrow}>Resolver Workspace</Text>
-            <Text style={styles.title}>Assigned Ticket Queue</Text>
-            <Text style={styles.subtitle}>
-              Move tickets to in-progress, then resolve with a final note for
-              manager review.
-            </Text>
-            <Text style={styles.signedInText}>{email}</Text>
-          </View>
-          <View style={styles.headerVisualColumn}>
-            <CampusCareIllustration
-              accessibilityLabel="Resolver progress illustration"
-              name="resolverProgress"
-              style={styles.heroIllustration}
-            />
-            {onSwitchToReporter ? (
-              <GlassPressable
-                onPress={onSwitchToReporter}
-                surfaceStyle={styles.workspaceButton}
-                pressedSurfaceStyle={styles.controlPressed}
-              >
-                <Text style={styles.workspaceButtonText}>Go Reporter</Text>
-              </GlassPressable>
-            ) : null}
-            <GlassPressable
-              onPress={onSignOut}
-              surfaceStyle={styles.signOutButton}
-              pressedSurfaceStyle={styles.controlPressed}
-            >
-              <Text style={styles.signOutText}>Sign out</Text>
-            </GlassPressable>
-          </View>
-        </View>
-      </View>
-      <NotificationCenter variant="row" />
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-    </View>
-  );
-}
-
-function ResolverEmptyState(): React.JSX.Element {
-  return (
-    <View style={styles.emptyState}>
-      <CampusCareIllustration
-        accessibilityLabel="Assignment queue illustration"
-        name="managerAssignment"
-        style={styles.emptyIllustration}
-      />
-      <Text style={styles.emptyText}>No tickets are assigned to you yet.</Text>
-    </View>
-  );
-}
-
-function ResolverListFooter({
-  canLoadMore,
-  onLoadMore,
-}: ResolverListFooterProps): React.JSX.Element {
-  return (
-    <View style={styles.footerSpace}>
-      {canLoadMore ? (
-        <GlassPressable
-          onPress={onLoadMore}
-          surfaceStyle={styles.secondaryButton}
-          pressedSurfaceStyle={styles.controlPressed}
-        >
-          <Text style={styles.secondaryButtonText}>Load More</Text>
-        </GlassPressable>
-      ) : null}
-    </View>
-  );
-}
-
-function AssignedTicketActions({
-  isProcessing,
-  note,
-  onNoteChange,
-  onStartWork,
-}: AssignedTicketActionsProps): React.JSX.Element {
-  return (
-    <>
-      <TextInput
-        value={note}
-        onChangeText={onNoteChange}
-        style={styles.input}
-        placeholder="Optional progress note"
-        placeholderTextColor={theme.colors.textMuted}
-      />
-      <Pressable
-        disabled={isProcessing}
-        onPress={onStartWork}
-        style={[styles.primaryButton, isProcessing ? styles.buttonDisabled : null]}
-      >
-        <Text style={styles.primaryButtonText}>
-          {isProcessing ? "Updating..." : "Set In Progress"}
-        </Text>
-      </Pressable>
-    </>
-  );
-}
-
-function InProgressTicketActions({
-  imageSelectionSource,
-  isProcessing,
-  note,
-  resolutionImage,
-  onNoteChange,
-  onOpenImage,
-  onPickImage,
-  onRemoveImage,
-  onResolve,
-}: InProgressTicketActionsProps): React.JSX.Element {
-  const imageActionDisabled = isProcessing || imageSelectionSource !== null;
-
-  return (
-    <>
-      <TextInput
-        value={note}
-        onChangeText={onNoteChange}
-        style={[styles.input, styles.multilineInput]}
-        placeholder="Resolution note (required)"
-        placeholderTextColor={theme.colors.textMuted}
-        multiline
-      />
-      <View style={styles.imageActionRow}>
-        <GlassPressable
-          onPress={() => onPickImage("camera")}
-          disabled={imageActionDisabled}
-          containerStyle={styles.imageActionButton}
-          surfaceStyle={[
-            styles.secondaryButton,
-            styles.imageActionButton,
-          ]}
-          pressedSurfaceStyle={styles.controlPressed}
-          disabledSurfaceStyle={styles.controlDisabled}
-        >
-          <Text style={styles.secondaryButtonText}>
-            {imageSelectionSource === "camera" ? "Opening..." : "Take Photo"}
-          </Text>
-        </GlassPressable>
-        <GlassPressable
-          onPress={() => onPickImage("library")}
-          disabled={imageActionDisabled}
-          containerStyle={styles.imageActionButton}
-          surfaceStyle={[
-            styles.secondaryButton,
-            styles.imageActionButton,
-          ]}
-          pressedSurfaceStyle={styles.controlPressed}
-          disabledSurfaceStyle={styles.controlDisabled}
-        >
-          <Text style={styles.secondaryButtonText}>
-            {imageSelectionSource === "library" ? "Opening..." : "Choose Library"}
-          </Text>
-        </GlassPressable>
-      </View>
-      {resolutionImage ? (
-        <>
-          <TicketImagePreview
-            uri={resolutionImage.uri}
-            style={styles.resolutionPreviewImage}
-            onPress={() => onOpenImage(resolutionImage.uri)}
-          />
-          <GlassPressable
-            onPress={onRemoveImage}
-            disabled={isProcessing}
-            surfaceStyle={styles.secondaryButton}
-            pressedSurfaceStyle={styles.controlPressed}
-            disabledSurfaceStyle={styles.controlDisabled}
-          >
-            <Text style={styles.secondaryButtonText}>
-              Remove Attached Resolution Photo
-            </Text>
-          </GlassPressable>
-        </>
-      ) : null}
-      <Pressable
-        disabled={isProcessing}
-        onPress={onResolve}
-        style={[styles.primaryButton, isProcessing ? styles.buttonDisabled : null]}
-      >
-        <Text style={styles.primaryButtonText}>
-          {isProcessing ? "Submitting..." : "Mark Resolved"}
-        </Text>
-      </Pressable>
-    </>
-  );
-}
-
-function ResolvedTicketActions({
-  resolutionImageUrl,
-  onOpenImage,
-}: ResolvedTicketActionsProps): React.JSX.Element {
-  return (
-    <>
-      {resolutionImageUrl ? (
-        <TicketImagePreview
-          uri={resolutionImageUrl}
-          style={styles.resolutionPreviewImage}
-          onPress={() => onOpenImage(resolutionImageUrl)}
-        />
-      ) : null}
-      <Text style={styles.awaitingText}>Awaiting manager closure.</Text>
-    </>
-  );
-}
-
-function ResolverTicketCard({
-  imageSelectionSource,
-  isProcessing,
-  progressNote,
-  resolutionImage,
-  resolutionNote,
-  ticket,
-  onOpenDetails,
-  onOpenLightbox,
-  onProgressNoteChange,
-  onResolutionNoteChange,
-  onSelectResolutionImage,
-  onRemoveResolutionImage,
-  onResolve,
-  onStartWork,
-}: ResolverTicketCardProps): React.JSX.Element {
-  const statusColors = getTicketStatusColors(ticket.status);
-
-  let actions: React.JSX.Element | null = null;
-
-  if (ticket.status === "assigned") {
-    actions = (
-      <AssignedTicketActions
-        isProcessing={isProcessing}
-        note={progressNote}
-        onNoteChange={onProgressNoteChange}
-        onStartWork={onStartWork}
-      />
-    );
-  } else if (ticket.status === "in_progress") {
-    actions = (
-      <InProgressTicketActions
-        imageSelectionSource={imageSelectionSource}
-        isProcessing={isProcessing}
-        note={resolutionNote}
-        resolutionImage={resolutionImage}
-        onNoteChange={onResolutionNoteChange}
-        onOpenImage={onOpenLightbox}
-        onPickImage={onSelectResolutionImage}
-        onRemoveImage={onRemoveResolutionImage}
-        onResolve={onResolve}
-      />
-    );
-  } else if (ticket.status === "resolved") {
-    actions = (
-      <ResolvedTicketActions
-        resolutionImageUrl={ticket.resolutionImageUrl}
-        onOpenImage={onOpenLightbox}
-      />
-    );
-  }
-
-  return (
-    <View style={styles.ticketCard}>
-      <Pressable
-        onPress={() => onOpenDetails(ticket)}
-        style={styles.detailsPreviewArea}
-      >
-        <View style={styles.ticketHeaderRow}>
-          <Text style={styles.ticketTitle}>{ticket.category}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: statusColors.background },
-            ]}
-          >
-            <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-              {getTicketStatusLabel(ticket.status)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.locationRow}>
-          <Ionicons
-            name="location-outline"
-            size={14}
-            color={theme.colors.textMuted}
-          />
-          <Text style={styles.ticketMeta}>{ticket.location}</Text>
-        </View>
-        {ticket.imageUrl ? (
-          <TicketImagePreview
-            uri={ticket.imageUrl}
-            style={styles.ticketImage}
-            onPress={(event) => {
-              event.stopPropagation();
-              onOpenLightbox(ticket.imageUrl!);
-            }}
-          />
-        ) : null}
-        <Text style={styles.ticketDescription}>{ticket.description}</Text>
-        <Text style={styles.ticketMeta}>
-          Updated {formatTimestamp(ticket.updatedAt)}
-        </Text>
-      </Pressable>
-
-      {actions}
-    </View>
-  );
-}
-
-export function ResolverHome(props: {
-  email: string;
-  onSignOut: () => void;
-  onSwitchToReporter?: () => void;
-}): React.JSX.Element {
+}: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const generateUploadUrl = useMutation(api.ticketsReporter.generateUploadUrl);
   const deleteUnusedUpload = useMutation(api.ticketsReporter.deleteUnusedUpload);
@@ -445,94 +77,394 @@ export function ResolverHome(props: {
     {},
     { initialNumItems: 12 },
   );
-
   const tickets = useMemo(() => results as Ticket[], [results]);
 
-  const [progressNotes, setProgressNotes] = useState<Record<string, string>>({});
-  const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>(
-    {},
-  );
-  const [resolutionImages, setResolutionImages] = useState<
-    Record<string, TicketImageAsset | null>
-  >({});
-  const [imageSelectionTarget, setImageSelectionTarget] =
-    useState<ResolutionImageSelectionTarget | null>(null);
-  const [processingTicketId, setProcessingTicketId] = useState<string | null>(
-    null,
-  );
-  const [errorMessage, setErrorMessage] = useState("");
-  const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
-  const [selectedTicketId, setSelectedTicketId] =
-    useState<Id<"tickets"> | null>(null);
-  const [selectedTicketPreview, setSelectedTicketPreview] =
-    useState<Ticket | null>(null);
-  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const state = useResolverState();
+  useSyncActionTicketWithList(tickets, state.actionTicket, state.setActionTicket);
 
-  const selectedTicket = useQuery(
+  const navigation = useResolverNavigation({
+    isDetailsVisible: state.isDetailsVisible,
+    setActionTicket: state.setActionTicket,
+    setDetailsTicketId: state.setDetailsTicketId,
+    setDetailsTicketPreview: state.setDetailsTicketPreview,
+    setErrorMessage: state.setErrorMessage,
+    setIsActionSheetVisible: state.setIsActionSheetVisible,
+    setIsDetailsVisible: state.setIsDetailsVisible,
+    setLightboxImageUri: state.setLightboxImageUri,
+  });
+
+  const { onSelectResolutionImage, onStartWork } = useResolverMutations({
+    progressNotes: state.progressNotes,
+    setErrorMessage: state.setErrorMessage,
+    setImageSelectionTarget: state.setImageSelectionTarget,
+    setInProgress,
+    setProcessingTicketId: state.setProcessingTicketId,
+    setResolutionImages: state.setResolutionImages,
+  });
+
+  const onResolve = useResolverResolveAction({
+    deleteUnusedUpload,
+    generateUploadUrl,
+    markResolved,
+    resolutionImages: state.resolutionImages,
+    resolutionNotes: state.resolutionNotes,
+    setErrorMessage: state.setErrorMessage,
+    setProcessingTicketId: state.setProcessingTicketId,
+    setResolutionImages: state.setResolutionImages,
+    setResolutionNotes: state.setResolutionNotes,
+  });
+
+  const detailsView = useResolverTicketDetails(
+    state.isDetailsVisible,
+    state.detailsTicketId,
+    state.detailsTicketPreview,
+  );
+
+  const activeSlice = useActiveTicketSlice({
+    actionTicket: state.actionTicket,
+    imageSelectionTarget: state.imageSelectionTarget,
+    processingTicketId: state.processingTicketId,
+  });
+
+  const renderTicket = useCallback(
+    ({ item }: { item: Ticket }) => (
+      <WorkspaceTicketCard
+        ticket={item}
+        onOpenDetails={navigation.onCardPress}
+        onOpenImage={navigation.openLightbox}
+        trailing={<ResolverActionHint ticket={item} />}
+      />
+    ),
+    [navigation.onCardPress, navigation.openLightbox],
+  );
+
+  const keyExtractor = useCallback((item: Ticket) => item._id, []);
+
+  return (
+    <AppScreen>
+      <FlatList
+        data={tickets}
+        keyExtractor={keyExtractor}
+        renderItem={renderTicket}
+        ListHeaderComponent={
+          <ResolverListHeader
+            email={email}
+            onSignOut={onSignOut}
+            switchTo={buildSwitchTo(onSwitchToReporter)}
+          />
+        }
+        ListEmptyComponent={
+          <WorkspaceEmptyState
+            illustration="managerAssignment"
+            title="Queue is clear"
+            body="No tickets are assigned to you yet. Hang tight."
+          />
+        }
+        ListFooterComponent={
+          <WorkspaceLoadMoreFooter
+            canLoadMore={status === "CanLoadMore"}
+            onLoadMore={() => loadMore(10)}
+          />
+        }
+        contentContainerStyle={[
+          listHeaderStyles.listContent,
+          { paddingBottom: Math.max(24, insets.bottom + 16) },
+        ]}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={Platform.OS === "android"}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
+      />
+
+      <ResolverActionSheetContainer
+        activeSlice={activeSlice}
+        errorMessage={state.errorMessage}
+        isActionSheetVisible={state.isActionSheetVisible}
+        progressNotes={state.progressNotes}
+        resolutionImages={state.resolutionImages}
+        resolutionNotes={state.resolutionNotes}
+        setProgressNotes={state.setProgressNotes}
+        setResolutionImages={state.setResolutionImages}
+        setResolutionNotes={state.setResolutionNotes}
+        closeActionSheet={navigation.closeActionSheet}
+        openLightbox={navigation.openLightbox}
+        onResolve={(ticket) => void onResolve(ticket)}
+        onSelectResolutionImage={(target) =>
+          void onSelectResolutionImage(target)
+        }
+        onStartWork={(ticket) => void onStartWork(ticket)}
+      />
+
+      <TicketDetailsPanel
+        visible={state.isDetailsVisible}
+        ticket={detailsView.ticket}
+        historyEntries={detailsView.history}
+        historyUnavailableText="Status history is unavailable for this ticket."
+        onClose={navigation.closeDetails}
+      />
+
+      <ImageLightbox
+        imageUri={state.lightboxImageUri}
+        onClose={navigation.closeLightbox}
+      />
+    </AppScreen>
+  );
+}
+
+function ResolverListHeader({
+  email,
+  onSignOut,
+  switchTo,
+}: {
+  email: string;
+  onSignOut: () => void;
+  switchTo: { label: string; onPress: () => void } | undefined;
+}): React.JSX.Element {
+  return (
+    <View style={listHeaderStyles.container}>
+      <WorkspaceHero
+        email={email}
+        role="Resolver"
+        illustration="resolverProgress"
+        onSignOut={onSignOut}
+        switchTo={switchTo}
+      />
+      <Text style={listHeaderStyles.sectionTitle}>Assigned to me</Text>
+    </View>
+  );
+}
+
+type ActiveTicketSlice = {
+  ticket: Ticket | null;
+  ticketId: string | null;
+  isProcessing: boolean;
+  imageSelectionSource: TicketImageSource | null;
+};
+
+function useActiveTicketSlice({
+  actionTicket,
+  imageSelectionTarget,
+  processingTicketId,
+}: {
+  actionTicket: Ticket | null;
+  imageSelectionTarget: ImageSelectionTarget | null;
+  processingTicketId: string | null;
+}): ActiveTicketSlice {
+  return useMemo(() => {
+    const ticketId = actionTicket?._id ?? null;
+    const isProcessing =
+      ticketId !== null && processingTicketId === ticketId;
+    const imageSelectionSource =
+      ticketId !== null && imageSelectionTarget?.ticketId === ticketId
+        ? imageSelectionTarget.source
+        : null;
+    return {
+      ticket: actionTicket,
+      ticketId,
+      isProcessing,
+      imageSelectionSource,
+    };
+  }, [actionTicket, imageSelectionTarget, processingTicketId]);
+}
+
+type DetailsView = {
+  ticket: Ticket | null;
+  history: TicketWithHistory["history"] | null | undefined;
+};
+
+function useResolverTicketDetails(
+  isDetailsVisible: boolean,
+  detailsTicketId: Id<"tickets"> | null,
+  detailsTicketPreview: Ticket | null,
+): DetailsView {
+  const detailsTicket = useQuery(
     api.ticketsShared.getById,
-    isDetailsVisible && selectedTicketId ? { ticketId: selectedTicketId } : "skip",
+    isDetailsVisible && detailsTicketId
+      ? { ticketId: detailsTicketId }
+      : "skip",
   ) as TicketWithHistory | null | undefined;
 
-  const onSelectResolutionImage = useCallback(
-    async (args: ResolutionImageSelectionTarget) => {
-      setErrorMessage("");
-      setImageSelectionTarget(args);
+  return useMemo(() => {
+    const ticket = detailsTicket?.ticket ?? detailsTicketPreview;
+    const history =
+      detailsTicket === undefined ? undefined : detailsTicket?.history ?? null;
+    return { ticket, history };
+  }, [detailsTicket, detailsTicketPreview]);
+}
 
-      try {
-        const selection = await selectTicketImage(args.source);
+function useSyncActionTicketWithList(
+  tickets: Ticket[],
+  actionTicket: Ticket | null,
+  setActionTicket: React.Dispatch<React.SetStateAction<Ticket | null>>,
+): void {
+  useEffect(() => {
+    if (!actionTicket) return;
+    const refreshed = tickets.find((t) => t._id === actionTicket._id);
+    if (refreshed && refreshed.status !== actionTicket.status) {
+      setActionTicket(refreshed);
+    }
+  }, [actionTicket, setActionTicket, tickets]);
+}
 
-        if (selection.kind === "cancelled") {
-          return;
-        }
+type ResolverActionSheetContainerProps = {
+  activeSlice: ActiveTicketSlice;
+  errorMessage: string;
+  isActionSheetVisible: boolean;
+  progressNotes: Record<string, string>;
+  resolutionImages: Record<string, TicketImageAsset | null>;
+  resolutionNotes: Record<string, string>;
+  setProgressNotes: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
+  setResolutionImages: React.Dispatch<
+    React.SetStateAction<Record<string, TicketImageAsset | null>>
+  >;
+  setResolutionNotes: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
+  closeActionSheet: () => void;
+  openLightbox: (uri: string) => void;
+  onResolve: (ticket: Ticket) => void;
+  onSelectResolutionImage: (target: ImageSelectionTarget) => void;
+  onStartWork: (ticket: Ticket) => void;
+};
 
-        if (selection.kind === "error") {
-          setErrorMessage(selection.message);
-          return;
-        }
+function ResolverActionSheetContainer({
+  activeSlice,
+  errorMessage,
+  isActionSheetVisible,
+  progressNotes,
+  resolutionImages,
+  resolutionNotes,
+  setProgressNotes,
+  setResolutionImages,
+  setResolutionNotes,
+  closeActionSheet,
+  openLightbox,
+  onResolve,
+  onSelectResolutionImage,
+  onStartWork,
+}: ResolverActionSheetContainerProps): React.JSX.Element {
+  const { ticket: activeTicket, ticketId: activeTicketId } = activeSlice;
 
-        setResolutionImages((previous) => ({
-          ...previous,
-          [args.ticketId]: selection.asset,
-        }));
-      } finally {
-        setImageSelectionTarget(null);
-      }
+  const updateProgressNote = useCallback(
+    (value: string) => {
+      if (!activeTicketId) return;
+      setProgressNotes((prev) => ({ ...prev, [activeTicketId]: value }));
     },
-    [],
+    [activeTicketId, setProgressNotes],
   );
 
-  const onStartWork = useCallback(
-    async (ticket: Ticket) => {
-      setProcessingTicketId(ticket._id);
-      setErrorMessage("");
-
-      try {
-        const note = (progressNotes[ticket._id] ?? "").trim();
-        await setInProgress(createInProgressMutationArgs(ticket._id, note));
-      } catch (error) {
-        setErrorMessage(formatError(error));
-      } finally {
-        setProcessingTicketId(null);
-      }
+  const updateResolutionNote = useCallback(
+    (value: string) => {
+      if (!activeTicketId) return;
+      setResolutionNotes((prev) => ({ ...prev, [activeTicketId]: value }));
     },
-    [progressNotes, setInProgress],
+    [activeTicketId, setResolutionNotes],
   );
 
-  const onResolve = useCallback(
+  const handleSelectResolutionImage = useCallback(
+    (source: TicketImageSource) => {
+      if (!activeTicketId) return;
+      onSelectResolutionImage({ ticketId: activeTicketId, source });
+    },
+    [activeTicketId, onSelectResolutionImage],
+  );
+
+  const handleRemoveResolutionImage = useCallback(() => {
+    if (!activeTicketId) return;
+    setResolutionImages((prev) => ({ ...prev, [activeTicketId]: null }));
+  }, [activeTicketId, setResolutionImages]);
+
+  const handleStartWork = useCallback(() => {
+    if (!activeTicket) return;
+    onStartWork(activeTicket);
+  }, [activeTicket, onStartWork]);
+
+  const handleResolve = useCallback(() => {
+    if (!activeTicket) return;
+    onResolve(activeTicket);
+  }, [activeTicket, onResolve]);
+
+  const progressNote = activeTicketId
+    ? progressNotes[activeTicketId] ?? ""
+    : "";
+  const resolutionNote = activeTicketId
+    ? resolutionNotes[activeTicketId] ?? ""
+    : "";
+  const resolutionImage = activeTicketId
+    ? resolutionImages[activeTicketId] ?? null
+    : null;
+
+  return (
+    <ResolverActionSheet
+      ticket={activeTicket}
+      visible={isActionSheetVisible}
+      isProcessing={activeSlice.isProcessing}
+      progressNote={progressNote}
+      resolutionNote={resolutionNote}
+      resolutionImage={resolutionImage}
+      imageSelectionSource={activeSlice.imageSelectionSource}
+      errorMessage={errorMessage}
+      onClose={closeActionSheet}
+      onProgressNoteChange={updateProgressNote}
+      onResolutionNoteChange={updateResolutionNote}
+      onSelectResolutionImage={handleSelectResolutionImage}
+      onRemoveResolutionImage={handleRemoveResolutionImage}
+      onOpenImage={openLightbox}
+      onStartWork={handleStartWork}
+      onResolve={handleResolve}
+    />
+  );
+}
+
+type ResolveActionDeps = {
+  deleteUnusedUpload: ReturnType<
+    typeof useMutation<typeof api.ticketsReporter.deleteUnusedUpload>
+  >;
+  generateUploadUrl: ReturnType<
+    typeof useMutation<typeof api.ticketsReporter.generateUploadUrl>
+  >;
+  markResolved: ReturnType<typeof useMutation<typeof api.ticketsResolver.markResolved>>;
+  resolutionImages: Record<string, TicketImageAsset | null>;
+  resolutionNotes: Record<string, string>;
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
+  setProcessingTicketId: React.Dispatch<React.SetStateAction<string | null>>;
+  setResolutionImages: React.Dispatch<
+    React.SetStateAction<Record<string, TicketImageAsset | null>>
+  >;
+  setResolutionNotes: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
+};
+
+function useResolverResolveAction(deps: ResolveActionDeps) {
+  const {
+    deleteUnusedUpload,
+    generateUploadUrl,
+    markResolved,
+    resolutionImages,
+    resolutionNotes,
+    setErrorMessage,
+    setProcessingTicketId,
+    setResolutionImages,
+    setResolutionNotes,
+  } = deps;
+
+  return useCallback(
     async (ticket: Ticket) => {
       const resolutionNote = (resolutionNotes[ticket._id] ?? "").trim();
-
       if (!resolutionNote) {
         setErrorMessage("Resolution note is required.");
         return;
       }
-
       const resolutionImage = resolutionImages[ticket._id] ?? null;
       let uploadedStorageId: Id<"_storage"> | null = null;
 
       setProcessingTicketId(ticket._id);
       setErrorMessage("");
-
       try {
         if (resolutionImage) {
           uploadedStorageId = await uploadTicketImage({
@@ -540,7 +472,6 @@ export function ResolverHome(props: {
             generateUploadUrl,
           });
         }
-
         await markResolved(
           createMarkResolvedArgs(
             ticket._id,
@@ -548,14 +479,14 @@ export function ResolverHome(props: {
             uploadedStorageId,
           ),
         );
-        setResolutionNotes((previous) => ({ ...previous, [ticket._id]: "" }));
-        setResolutionImages((previous) => ({ ...previous, [ticket._id]: null }));
+        setResolutionNotes((prev) => ({ ...prev, [ticket._id]: "" }));
+        setResolutionImages((prev) => ({ ...prev, [ticket._id]: null }));
       } catch (error) {
         if (uploadedStorageId) {
           try {
             await deleteUnusedUpload({ storageId: uploadedStorageId });
           } catch {
-            // Keep the user-facing error focused on the original failure.
+            // Keep the user-facing error focused.
           }
         }
         setErrorMessage(formatError(error));
@@ -569,129 +500,234 @@ export function ResolverHome(props: {
       markResolved,
       resolutionImages,
       resolutionNotes,
+      setErrorMessage,
+      setProcessingTicketId,
+      setResolutionImages,
+      setResolutionNotes,
     ],
-  );
-
-  const openTicketDetails = useCallback((ticket: Ticket) => {
-    setSelectedTicketId(ticket._id);
-    setSelectedTicketPreview(ticket);
-    setIsDetailsVisible(true);
-  }, []);
-
-  const closeTicketDetails = useCallback(() => {
-    setIsDetailsVisible(false);
-  }, []);
-
-  const openLightbox = useCallback((imageUri: string) => {
-    setLightboxImageUri(imageUri);
-  }, []);
-
-  useEffect(() => {
-    if (isDetailsVisible) {
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      setSelectedTicketId(null);
-      setSelectedTicketPreview(null);
-    }, 260);
-
-    return () => clearTimeout(timeoutId);
-  }, [isDetailsVisible]);
-
-  const renderTicket = useCallback(
-    ({ item }: { item: Ticket }) => {
-      const imageSelectionSource =
-        imageSelectionTarget?.ticketId === item._id
-          ? imageSelectionTarget.source
-          : null;
-
-      return (
-        <ResolverTicketCard
-          imageSelectionSource={imageSelectionSource}
-          isProcessing={processingTicketId === item._id}
-          progressNote={progressNotes[item._id] ?? ""}
-          resolutionImage={resolutionImages[item._id] ?? null}
-          resolutionNote={resolutionNotes[item._id] ?? ""}
-          ticket={item}
-          onOpenDetails={openTicketDetails}
-          onOpenLightbox={openLightbox}
-          onProgressNoteChange={(value) => {
-            setProgressNotes((previous) => ({ ...previous, [item._id]: value }));
-          }}
-          onResolutionNoteChange={(value) => {
-            setResolutionNotes((previous) => ({
-              ...previous,
-              [item._id]: value,
-            }));
-          }}
-          onSelectResolutionImage={(source) => {
-            void onSelectResolutionImage({ ticketId: item._id, source });
-          }}
-          onRemoveResolutionImage={() => {
-            setResolutionImages((previous) => ({ ...previous, [item._id]: null }));
-          }}
-          onResolve={() => {
-            void onResolve(item);
-          }}
-          onStartWork={() => {
-            void onStartWork(item);
-          }}
-        />
-      );
-    },
-    [
-      imageSelectionTarget,
-      onResolve,
-      onSelectResolutionImage,
-      onStartWork,
-      openLightbox,
-      openTicketDetails,
-      processingTicketId,
-      progressNotes,
-      resolutionImages,
-      resolutionNotes,
-    ],
-  );
-
-  const keyExtractor = useCallback((item: Ticket) => item._id, []);
-
-  return (
-    <AppScreen>
-      <FlatList
-        data={tickets}
-        keyExtractor={keyExtractor}
-        renderItem={renderTicket}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: Math.max(24, insets.bottom + 16) },
-        ]}
-        ListHeaderComponent={
-          <ResolverHomeHeader
-            email={props.email}
-            errorMessage={errorMessage}
-            onSignOut={props.onSignOut}
-            onSwitchToReporter={props.onSwitchToReporter}
-          />
-        }
-        ListEmptyComponent={<ResolverEmptyState />}
-        ListFooterComponent={
-          <ResolverListFooter
-            canLoadMore={status === "CanLoadMore"}
-            onLoadMore={() => loadMore(10)}
-          />
-        }
-      />
-      <TicketDetailsPanel
-        visible={isDetailsVisible}
-        ticket={selectedTicket?.ticket ?? selectedTicketPreview}
-        historyEntries={
-          selectedTicket === undefined ? undefined : selectedTicket?.history ?? null
-        }
-        historyUnavailableText="Status history is unavailable for this ticket."
-        onClose={closeTicketDetails}
-      />
-      <ImageLightbox imageUri={lightboxImageUri} onClose={() => setLightboxImageUri(null)} />
-    </AppScreen>
   );
 }
+
+type ResolverMutationsDeps = {
+  progressNotes: Record<string, string>;
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
+  setImageSelectionTarget: React.Dispatch<
+    React.SetStateAction<ImageSelectionTarget | null>
+  >;
+  setInProgress: ReturnType<typeof useMutation<typeof api.ticketsResolver.setInProgress>>;
+  setProcessingTicketId: React.Dispatch<React.SetStateAction<string | null>>;
+  setResolutionImages: React.Dispatch<
+    React.SetStateAction<Record<string, TicketImageAsset | null>>
+  >;
+};
+
+function useResolverMutations(deps: ResolverMutationsDeps) {
+  const {
+    progressNotes,
+    setErrorMessage,
+    setImageSelectionTarget,
+    setInProgress,
+    setProcessingTicketId,
+    setResolutionImages,
+  } = deps;
+
+  const onSelectResolutionImage = useCallback(
+    async (target: ImageSelectionTarget) => {
+      setErrorMessage("");
+      setImageSelectionTarget(target);
+      try {
+        const selection = await selectTicketImage(target.source);
+        if (selection.kind === "cancelled") return;
+        if (selection.kind === "error") {
+          setErrorMessage(selection.message);
+          return;
+        }
+        setResolutionImages((prev) => ({
+          ...prev,
+          [target.ticketId]: selection.asset,
+        }));
+      } finally {
+        setImageSelectionTarget(null);
+      }
+    },
+    [setErrorMessage, setImageSelectionTarget, setResolutionImages],
+  );
+
+  const onStartWork = useCallback(
+    async (ticket: Ticket) => {
+      setProcessingTicketId(ticket._id);
+      setErrorMessage("");
+      try {
+        const note = (progressNotes[ticket._id] ?? "").trim();
+        await setInProgress(createInProgressArgs(ticket._id, note));
+      } catch (error) {
+        setErrorMessage(formatError(error));
+      } finally {
+        setProcessingTicketId(null);
+      }
+    },
+    [progressNotes, setErrorMessage, setInProgress, setProcessingTicketId],
+  );
+
+  return { onSelectResolutionImage, onStartWork };
+}
+
+type ResolverNavigationDeps = {
+  isDetailsVisible: boolean;
+  setActionTicket: React.Dispatch<React.SetStateAction<Ticket | null>>;
+  setDetailsTicketId: React.Dispatch<React.SetStateAction<Id<"tickets"> | null>>;
+  setDetailsTicketPreview: React.Dispatch<React.SetStateAction<Ticket | null>>;
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
+  setIsActionSheetVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsDetailsVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  setLightboxImageUri: React.Dispatch<React.SetStateAction<string | null>>;
+};
+
+function useResolverNavigation(deps: ResolverNavigationDeps) {
+  const {
+    isDetailsVisible,
+    setActionTicket,
+    setDetailsTicketId,
+    setDetailsTicketPreview,
+    setErrorMessage,
+    setIsActionSheetVisible,
+    setIsDetailsVisible,
+    setLightboxImageUri,
+  } = deps;
+
+  const openActionSheet = useCallback(
+    (ticket: Ticket) => {
+      setErrorMessage("");
+      setActionTicket(ticket);
+      setIsActionSheetVisible(true);
+    },
+    [setActionTicket, setErrorMessage, setIsActionSheetVisible],
+  );
+
+  const closeActionSheet = useCallback(() => {
+    setIsActionSheetVisible(false);
+    setTimeout(() => setActionTicket(null), 260);
+  }, [setActionTicket, setIsActionSheetVisible]);
+
+  const openDetails = useCallback(
+    (ticket: Ticket) => {
+      setDetailsTicketId(ticket._id);
+      setDetailsTicketPreview(ticket);
+      setIsDetailsVisible(true);
+    },
+    [setDetailsTicketId, setDetailsTicketPreview, setIsDetailsVisible],
+  );
+
+  const closeDetails = useCallback(() => {
+    setIsDetailsVisible(false);
+  }, [setIsDetailsVisible]);
+
+  useEffect(() => {
+    if (isDetailsVisible) return;
+    const timeoutId = setTimeout(() => {
+      setDetailsTicketId(null);
+      setDetailsTicketPreview(null);
+    }, 260);
+    return () => clearTimeout(timeoutId);
+  }, [isDetailsVisible, setDetailsTicketId, setDetailsTicketPreview]);
+
+  const openLightbox = useCallback(
+    (uri: string) => {
+      setLightboxImageUri(uri);
+    },
+    [setLightboxImageUri],
+  );
+
+  const closeLightbox = useCallback(() => {
+    setLightboxImageUri(null);
+  }, [setLightboxImageUri]);
+
+  const onCardPress = useCallback(
+    (ticket: Ticket) => {
+      if (ticket.status === "closed") {
+        openDetails(ticket);
+      } else {
+        openActionSheet(ticket);
+      }
+    },
+    [openActionSheet, openDetails],
+  );
+
+  return {
+    closeActionSheet,
+    closeDetails,
+    closeLightbox,
+    onCardPress,
+    openLightbox,
+  };
+}
+
+function useResolverState() {
+  const [progressNotes, setProgressNotes] = useState<Record<string, string>>({});
+  const [resolutionNotes, setResolutionNotes] = useState<
+    Record<string, string>
+  >({});
+  const [resolutionImages, setResolutionImages] = useState<
+    Record<string, TicketImageAsset | null>
+  >({});
+  const [imageSelectionTarget, setImageSelectionTarget] =
+    useState<ImageSelectionTarget | null>(null);
+  const [processingTicketId, setProcessingTicketId] = useState<string | null>(
+    null,
+  );
+  const [errorMessage, setErrorMessage] = useState("");
+  const [lightboxImageUri, setLightboxImageUri] = useState<string | null>(null);
+  const [actionTicket, setActionTicket] = useState<Ticket | null>(null);
+  const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
+  const [detailsTicketId, setDetailsTicketId] =
+    useState<Id<"tickets"> | null>(null);
+  const [detailsTicketPreview, setDetailsTicketPreview] =
+    useState<Ticket | null>(null);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+
+  return {
+    progressNotes,
+    setProgressNotes,
+    resolutionNotes,
+    setResolutionNotes,
+    resolutionImages,
+    setResolutionImages,
+    imageSelectionTarget,
+    setImageSelectionTarget,
+    processingTicketId,
+    setProcessingTicketId,
+    errorMessage,
+    setErrorMessage,
+    lightboxImageUri,
+    setLightboxImageUri,
+    actionTicket,
+    setActionTicket,
+    isActionSheetVisible,
+    setIsActionSheetVisible,
+    detailsTicketId,
+    setDetailsTicketId,
+    detailsTicketPreview,
+    setDetailsTicketPreview,
+    isDetailsVisible,
+    setIsDetailsVisible,
+  };
+}
+
+const listHeaderStyles = StyleSheet.create({
+  container: {
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.2,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  listContent: {
+    gap: 10,
+    paddingBottom: 24,
+    paddingHorizontal: 2,
+  },
+});
