@@ -11,6 +11,12 @@ import {
 } from "../../domain/reference/rooms/rooms";
 import { AppScreen } from "../../ui/AppScreen";
 import { theme } from "../../ui/theme";
+import {
+  WorkspaceEmptyState,
+  WorkspaceHero,
+  WorkspaceLoadMoreFooter,
+  WorkspaceTicketCard,
+} from "../../ui/workspace";
 import { formatError } from "../../utils/formatError";
 import { ImageLightbox } from "../tickets/ImageLightbox";
 import type { Ticket } from "../tickets/types";
@@ -20,13 +26,9 @@ import {
   type TicketImageSource,
 } from "../tickets/ticketImageSelection";
 import { uploadTicketImage } from "../tickets/uploadTicketImage";
-import { ReporterTicketCard } from "./ReporterTicketCard";
 import { ReporterTicketDetailsModal } from "./ReporterTicketDetailsModal";
-import { ReporterEmptyState } from "./components/ReporterEmptyState";
-import { ReporterLoadMoreFooter } from "./components/ReporterLoadMoreFooter";
 import { ReporterRoomSelector } from "./components/ReporterRoomSelector";
 import { ReporterTicketComposer } from "./components/ReporterTicketComposer";
-import { ReporterWorkspaceHero } from "./components/ReporterWorkspaceHero";
 
 type Props = {
   email: string;
@@ -258,7 +260,7 @@ export function ReporterHome({
 
   const renderTicket = useCallback(
     ({ item }: { item: Ticket }) => (
-      <ReporterTicketCard
+      <WorkspaceTicketCard
         ticket={item}
         onOpenDetails={openTicketDetails}
         onOpenImage={openLightbox}
@@ -280,12 +282,18 @@ export function ReporterHome({
     void submitTicket();
   }, [submitTicket]);
 
+  const switchTo = onSwitchToResolver
+    ? { label: "Switch to Resolver (dev)", onPress: onSwitchToResolver }
+    : undefined;
+
   const listHeader = (
     <View style={listHeaderStyles.container}>
-      <ReporterWorkspaceHero
+      <WorkspaceHero
         email={email}
+        role="Reporter"
+        illustration="ticketReport"
         onSignOut={onSignOut}
-        onSwitchToResolver={onSwitchToResolver}
+        switchTo={switchTo}
       />
       <ReporterTicketComposer
         category={category}
@@ -316,14 +324,20 @@ export function ReporterHome({
         keyExtractor={keyExtractor}
         renderItem={renderTicket}
         ListHeaderComponent={listHeader}
-        ListEmptyComponent={<ReporterEmptyState />}
+        ListEmptyComponent={
+          <WorkspaceEmptyState
+            illustration="ticketClosed"
+            title="No tickets yet"
+            body="Submit your first issue when something needs attention."
+          />
+        }
         contentContainerStyle={[
           listHeaderStyles.listContent,
           { paddingBottom: Math.max(24, insets.bottom + 16) },
         ]}
         showsVerticalScrollIndicator={false}
         ListFooterComponent={
-          <ReporterLoadMoreFooter
+          <WorkspaceLoadMoreFooter
             canLoadMore={status === "CanLoadMore"}
             onLoadMore={() => loadMore(10)}
           />
