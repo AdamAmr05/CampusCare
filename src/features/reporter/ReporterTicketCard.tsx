@@ -1,11 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { memo, useMemo } from "react";
-import { Pressable, Text, View, type GestureResponderEvent } from "react-native";
+import {
+  Pressable,
+  Text,
+  View,
+  type GestureResponderEvent,
+} from "react-native";
 import { theme } from "../../ui/theme";
 import { TicketImagePreview } from "../tickets/TicketImagePreview";
 import type { Ticket } from "../tickets/types";
-import { formatTimestamp, getTicketStatusColors, getTicketStatusLabel, truncateText } from "../tickets/utils";
-import { styles } from "./ReporterHome.styles";
+import {
+  formatRelativeTimestamp,
+  getTicketStatusColors,
+  getTicketStatusShortLabel,
+  getTicketStatusStripeColor,
+} from "../tickets/utils";
+import { ticketCardStyles as styles } from "./ReporterTicketCard.styles";
 
 export const ReporterTicketCard = memo(function ReporterTicketCard(props: {
   ticket: Ticket;
@@ -13,7 +23,23 @@ export const ReporterTicketCard = memo(function ReporterTicketCard(props: {
   onOpenImage: (uri: string) => void;
 }): React.JSX.Element {
   const { ticket, onOpenDetails, onOpenImage } = props;
-  const statusColors = useMemo(() => getTicketStatusColors(ticket.status), [ticket.status]);
+
+  const statusColors = useMemo(
+    () => getTicketStatusColors(ticket.status),
+    [ticket.status],
+  );
+  const stripeColor = useMemo(
+    () => getTicketStatusStripeColor(ticket.status),
+    [ticket.status],
+  );
+  const statusLabel = useMemo(
+    () => getTicketStatusShortLabel(ticket.status),
+    [ticket.status],
+  );
+  const relativeUpdated = useMemo(
+    () => formatRelativeTimestamp(ticket.updatedAt),
+    [ticket.updatedAt],
+  );
 
   const onPressImage = (event: GestureResponderEvent): void => {
     event.stopPropagation();
@@ -23,25 +49,70 @@ export const ReporterTicketCard = memo(function ReporterTicketCard(props: {
   };
 
   return (
-    <Pressable style={styles.ticketCard} onPress={() => onOpenDetails(ticket)}>
-      <View style={styles.ticketHeaderRow}>
-        <Text style={styles.ticketTitle}>{ticket.category}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
-          <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-            {getTicketStatusLabel(ticket.status)}
+    <Pressable
+      onPress={() => onOpenDetails(ticket)}
+      style={({ pressed }) => [
+        styles.container,
+        pressed ? styles.pressed : null,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Ticket ${ticket.category}, status ${statusLabel}, location ${ticket.location}`}
+    >
+      <View style={styles.textColumn}>
+        <View style={styles.topRow}>
+          <View
+            style={[styles.statusDot, { backgroundColor: stripeColor }]}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text style={styles.title} numberOfLines={1}>
+            {ticket.category}
+          </Text>
+          <View
+            style={[
+              styles.statusPill,
+              { backgroundColor: statusColors.background },
+            ]}
+          >
+            <Text
+              style={[styles.statusPillText, { color: statusColors.text }]}
+              maxFontSizeMultiplier={1.2}
+            >
+              {statusLabel}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.metaRow}>
+          <Ionicons
+            name="location-outline"
+            size={12}
+            color={theme.colors.textMuted}
+          />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {ticket.location}
+          </Text>
+          <Text style={styles.metaDot}>·</Text>
+          <Text style={styles.metaText} numberOfLines={1}>
+            {relativeUpdated}
           </Text>
         </View>
-      </View>
-
-      <View style={styles.locationRow}>
-        <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
-        <Text style={styles.ticketMeta}>{ticket.location}</Text>
+        {ticket.description ? (
+          <Text
+            style={styles.description}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {ticket.description}
+          </Text>
+        ) : null}
       </View>
       {ticket.imageUrl ? (
-        <TicketImagePreview uri={ticket.imageUrl} style={styles.ticketCardImage} onPress={onPressImage} />
+        <TicketImagePreview
+          uri={ticket.imageUrl}
+          style={styles.thumb}
+          onPress={onPressImage}
+        />
       ) : null}
-      <Text style={styles.ticketDescription}>{truncateText(ticket.description, 110)}</Text>
-      <Text style={styles.ticketMeta}>Updated {formatTimestamp(ticket.updatedAt)}</Text>
     </Pressable>
   );
 });
