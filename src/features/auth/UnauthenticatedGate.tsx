@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { OnboardingIntent } from "../../domain/types";
 import { AppScreen } from "../../ui/AppScreen";
 import { CampusCareIllustration } from "../../ui/CampusCareIllustration";
+import { theme } from "../../ui/theme";
 import { AuthForm } from "./AuthForm";
 import { styles } from "./UnauthenticatedGate.styles";
 
@@ -18,44 +20,108 @@ export function UnauthenticatedGate(props: {
     setShowAuthForm(true);
   };
 
-  if (!showAuthForm) {
+  if (showAuthForm) {
     return (
-      <AppScreen>
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <Text style={styles.badge}>CampusCare GIU</Text>
-            <CampusCareIllustration
-              accessibilityLabel="Ticket reporting illustration"
-              name="ticketReport"
-              style={styles.heroIllustration}
-            />
-          </View>
-          <Text style={styles.title}>Report Campus Issues Fast</Text>
-          <Text style={styles.subtitle}>
-            Secure access with verified GIU email. Track every issue through assignment, work, and
-            manager closure.
-          </Text>
-
-          <Pressable onPress={() => continueWithIntent("reporter")} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Continue as Reporter</Text>
-          </Pressable>
-
-          <Pressable onPress={() => continueWithIntent("resolver")} style={styles.linkButton}>
-            <Text style={styles.linkText}>Resolver access request</Text>
-          </Pressable>
-        </View>
-      </AppScreen>
+      <AuthForm
+        intent={intent}
+        onBack={() => setShowAuthForm(false)}
+      />
     );
   }
 
   return (
-    <AuthForm
-      intent={intent}
-      onBack={() => setShowAuthForm(false)}
-      onIntentChange={(nextIntent) => {
-        setIntent(nextIntent);
-        props.onIntentSelected(nextIntent);
-      }}
-    />
+    <AppScreen>
+      <View style={styles.cardWrapper}>
+        <View style={styles.heroCard}>
+          <CardHeader />
+          <CardBody
+            onContinueAsReporter={() => continueWithIntent("reporter")}
+            onResolverAccess={() => continueWithIntent("resolver")}
+          />
+          <CardFooter />
+        </View>
+      </View>
+    </AppScreen>
+  );
+}
+
+function CardHeader(): React.JSX.Element {
+  return (
+    <View style={styles.headerZone}>
+      <View style={styles.wordmarkBlock}>
+        <Text style={styles.wordmark}>CampusCare</Text>
+        <Text style={styles.wordmarkAccent}>GIU</Text>
+        <View style={styles.wordmarkUnderline} />
+      </View>
+      <CampusCareIllustration
+        accessibilityLabel="Ticket reporting illustration"
+        name="ticketReport"
+        style={styles.heroIllustration}
+      />
+    </View>
+  );
+}
+
+function CardBody({
+  onContinueAsReporter,
+  onResolverAccess,
+}: {
+  onContinueAsReporter: () => void;
+  onResolverAccess: () => void;
+}): React.JSX.Element {
+  return (
+    <View style={styles.bodyZone}>
+      <View style={styles.copyBlock}>
+        <Text style={styles.title}>Report Campus{"\n"}Issues Fast</Text>
+        <Text style={styles.subtitle}>
+          Report any issue on campus and track it from the moment you submit
+          until it's resolved.
+        </Text>
+      </View>
+
+      <Pressable
+        onPress={onContinueAsReporter}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          pressed ? styles.primaryButtonPressed : null,
+        ]}
+      >
+        <Text style={styles.primaryButtonText}>Continue as Reporter</Text>
+        <Ionicons name="arrow-forward" size={16} color={theme.colors.white} />
+      </Pressable>
+
+      <Pressable
+        onPress={onResolverAccess}
+        style={({ pressed }) => [
+          styles.resolverLink,
+          pressed ? styles.resolverLinkPressed : null,
+        ]}
+        hitSlop={6}
+      >
+        <Ionicons
+          name="construct-outline"
+          size={14}
+          color={theme.colors.textSecondary}
+        />
+        <Text style={styles.resolverLinkText}>
+          Joining as a resolver? Request access
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function CardFooter(): React.JSX.Element {
+  return (
+    <View style={styles.footerZone}>
+      <Ionicons
+        name="mail-outline"
+        size={12}
+        color={theme.colors.textMuted}
+      />
+      <Text style={styles.footerText}>
+        Need help? Contact facilities@giu-uni.de
+      </Text>
+    </View>
   );
 }
