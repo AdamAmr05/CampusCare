@@ -33,6 +33,7 @@ import { ManagerRequestCardSkeleton } from "./components/ManagerRequestCardSkele
 import { ManagerResolverRequestCard } from "./components/ManagerResolverRequestCard";
 import {
   ManagerStatusFilter,
+  type MonitorCount,
   type MonitorStatusFilter,
 } from "./components/ManagerStatusFilter";
 import { ManagerTabBar, type ManagerTab } from "./components/ManagerTabBar";
@@ -103,11 +104,11 @@ export function ManagerHome({
   const monitorCounts = useMemo(
     () =>
       monitorCountsRaw ?? {
-        open: 0,
-        assigned: 0,
-        in_progress: 0,
-        resolved: 0,
-        closed: 0,
+        open: createEmptyMonitorCount(),
+        assigned: createEmptyMonitorCount(),
+        in_progress: createEmptyMonitorCount(),
+        resolved: createEmptyMonitorCount(),
+        closed: createEmptyMonitorCount(),
       },
     [monitorCountsRaw],
   );
@@ -430,11 +431,11 @@ function ManagerListHeader({
   monitorFilter: MonitorStatusFilter;
   onSelectMonitorFilter: (filter: MonitorStatusFilter) => void;
   monitorCounts: {
-    open: number;
-    assigned: number;
-    in_progress: number;
-    resolved: number;
-    closed: number;
+    open: MonitorCount;
+    assigned: MonitorCount;
+    in_progress: MonitorCount;
+    resolved: MonitorCount;
+    closed: MonitorCount;
   };
   errorMessage: string;
 }): React.JSX.Element {
@@ -1129,6 +1130,13 @@ function getMonitorFilterLabel(filter: MonitorStatusFilter): string {
     default:
       return filter;
   }
+}
+
+function createEmptyMonitorCount(): MonitorCount {
+  return {
+    value: 0,
+    isCapped: false,
+  };
 }
 
 const listHeaderStyles = StyleSheet.create({

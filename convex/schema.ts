@@ -45,6 +45,7 @@ export default defineSchema({
     .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_status_and_resolverUserId_and_createdAt", ["status", "resolverUserId", "createdAt"])
     .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_updatedAt", ["updatedAt"])
     .index("by_resolverUserId_and_updatedAt", ["resolverUserId", "updatedAt"]),
 
   ticket_status_history: defineTable({

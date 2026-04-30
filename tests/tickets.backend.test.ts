@@ -387,6 +387,67 @@ describe("ticket lifecycle and access control", () => {
     ).rejects.toThrow(/8MB or smaller/);
   });
 
+  it("returns capped manager monitor counts when a status exceeds the display cap", async () => {
+    const t = createHarness();
+    const { access } = await seedReporter(t, "13");
+    const { manager } = await seedManager(t);
+    const imageStorageId = await createStorageImageId(t);
+
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      await Promise.all(
+        Array.from({ length: 201 }, (_, index) =>
+          ctx.db.insert("tickets", {
+            reporterUserId: access.userId,
+            managerUserId: null,
+            resolverUserId: null,
+            category: "Electrical",
+            description: `Monitor count cap test ${index}`,
+            location: "Building B - Floor 2",
+            imageStorageId,
+            resolutionImageStorageId: null,
+            status: "open",
+            resolutionNote: null,
+            createdAt: now + index,
+            updatedAt: now + index,
+            resolvedAt: null,
+            closedAt: null,
+          }),
+        ),
+      );
+    });
+
+    const counts = await manager.query(api.ticketsManager.monitorCounts, {});
+
+    expect(counts.open).toEqual({ value: 200, isCapped: true });
+    expect(counts.assigned).toEqual({ value: 0, isCapped: false });
+  });
+
+  it("orders the all-ticket manager monitor by latest ticket update", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "14");
+    const { manager } = await seedManager(t);
+
+    const olderTicketId = await createTicketAsReporter(t, reporter);
+    const newerTicketId = await createTicketAsReporter(t, reporter);
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch(olderTicketId, {
+        updatedAt: Date.now() + 60_000,
+      });
+    });
+
+    const monitorPage = await manager.query(api.ticketsManager.listMonitor, {
+      statusFilter: "all",
+      paginationOpts: { cursor: null, numItems: 2 },
+    });
+
+    expect(monitorPage.page.map((ticket) => ticket._id)).toEqual([
+      olderTicketId,
+      newerTicketId,
+    ]);
+  });
+
   it("deletes only unreferenced uploads", async () => {
     const t = createHarness();
     const { reporter } = await seedReporter(t, "10");

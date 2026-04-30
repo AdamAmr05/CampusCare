@@ -278,7 +278,7 @@ export const listMonitor = query({
     const statusFilter = args.statusFilter;
     const baseQuery =
       statusFilter === "all"
-        ? ctx.db.query("tickets")
+        ? ctx.db.query("tickets").withIndex("by_updatedAt")
         : ctx.db
             .query("tickets")
             .withIndex("by_status_and_updatedAt", (queryBuilder) =>
@@ -300,13 +300,25 @@ export const listMonitor = query({
   },
 });
 
-const monitorCountsValidator = v.object({
-  open: v.number(),
-  assigned: v.number(),
-  in_progress: v.number(),
-  resolved: v.number(),
-  closed: v.number(),
+const monitorCountValidator = v.object({
+  value: v.number(),
+  isCapped: v.boolean(),
 });
+
+const monitorCountsValidator = v.object({
+  open: monitorCountValidator,
+  assigned: monitorCountValidator,
+  in_progress: monitorCountValidator,
+  resolved: monitorCountValidator,
+  closed: monitorCountValidator,
+});
+
+function toCappedCount(length: number, cap: number) {
+  return {
+    value: Math.min(length, cap),
+    isCapped: length > cap,
+  };
+}
 
 export const monitorCounts = query({
   args: {},
@@ -315,39 +327,40 @@ export const monitorCounts = query({
     await requireRole(ctx, "manager");
 
     const COUNT_CAP = 200;
+    const countLimit = COUNT_CAP + 1;
 
     const [openTickets, assignedTickets, inProgressTickets, resolvedTickets, closedTickets] =
       await Promise.all([
         ctx.db
           .query("tickets")
           .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "open"))
-          .take(COUNT_CAP),
+          .take(countLimit),
         ctx.db
           .query("tickets")
           .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "assigned"))
-          .take(COUNT_CAP),
+          .take(countLimit),
         ctx.db
           .query("tickets")
           .withIndex("by_status_and_updatedAt", (q) =>
             q.eq("status", "in_progress"),
           )
-          .take(COUNT_CAP),
+          .take(countLimit),
         ctx.db
           .query("tickets")
           .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "resolved"))
-          .take(COUNT_CAP),
+          .take(countLimit),
         ctx.db
           .query("tickets")
           .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "closed"))
-          .take(COUNT_CAP),
+          .take(countLimit),
       ]);
 
     return {
-      open: openTickets.length,
-      assigned: assignedTickets.length,
-      in_progress: inProgressTickets.length,
-      resolved: resolvedTickets.length,
-      closed: closedTickets.length,
+      open: toCappedCount(openTickets.length, COUNT_CAP),
+      assigned: toCappedCount(assignedTickets.length, COUNT_CAP),
+      in_progress: toCappedCount(inProgressTickets.length, COUNT_CAP),
+      resolved: toCappedCount(resolvedTickets.length, COUNT_CAP),
+      closed: toCappedCount(closedTickets.length, COUNT_CAP),
     };
   },
 });

@@ -9,20 +9,46 @@ export type MonitorStatusFilter = "all" | TicketStatus;
 type Chip = {
   key: MonitorStatusFilter;
   label: string;
-  count: number;
+  count: MonitorCount;
+};
+
+export type MonitorCount = {
+  value: number;
+  isCapped: boolean;
 };
 
 type Props = {
   active: MonitorStatusFilter;
   onSelect: (filter: MonitorStatusFilter) => void;
   counts: {
-    open: number;
-    assigned: number;
-    in_progress: number;
-    resolved: number;
-    closed: number;
+    open: MonitorCount;
+    assigned: MonitorCount;
+    in_progress: MonitorCount;
+    resolved: MonitorCount;
+    closed: MonitorCount;
   };
 };
+
+function sumMonitorCounts(counts: Props["counts"]): MonitorCount {
+  return {
+    value:
+      counts.open.value +
+      counts.assigned.value +
+      counts.in_progress.value +
+      counts.resolved.value +
+      counts.closed.value,
+    isCapped:
+      counts.open.isCapped ||
+      counts.assigned.isCapped ||
+      counts.in_progress.isCapped ||
+      counts.resolved.isCapped ||
+      counts.closed.isCapped,
+  };
+}
+
+function formatMonitorCount(count: MonitorCount): string {
+  return count.isCapped ? `${count.value}+` : String(count.value);
+}
 
 export const ManagerStatusFilter = memo(function ManagerStatusFilter({
   active,
@@ -34,12 +60,7 @@ export const ManagerStatusFilter = memo(function ManagerStatusFilter({
       {
         key: "all",
         label: "All",
-        count:
-          counts.open +
-          counts.assigned +
-          counts.in_progress +
-          counts.resolved +
-          counts.closed,
+        count: sumMonitorCounts(counts),
       },
       { key: "assigned", label: "Assigned", count: counts.assigned },
       { key: "in_progress", label: "In progress", count: counts.in_progress },
@@ -82,14 +103,14 @@ export const ManagerStatusFilter = memo(function ManagerStatusFilter({
             >
               {chip.label}
             </Text>
-            {chip.count > 0 ? (
+            {chip.count.value > 0 ? (
               <Text
                 style={[
                   styles.count,
                   isActive ? styles.countActive : null,
                 ]}
               >
-                {chip.count > 99 ? "99+" : chip.count}
+                {formatMonitorCount(chip.count)}
               </Text>
             ) : null}
           </Pressable>
