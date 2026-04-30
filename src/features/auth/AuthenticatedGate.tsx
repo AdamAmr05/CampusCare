@@ -110,6 +110,20 @@ function renderReadyAccessView({
     );
   }
 
+  if (access.accountStatus === "inactive") {
+    return (
+      <InfoScreen
+        title="Account deactivated"
+        message="Your CampusCare account has been deactivated by a manager. Please contact a manager if you believe this is a mistake."
+        footer={
+          <Pressable onPress={onSignOut} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Sign out</Text>
+          </Pressable>
+        }
+      />
+    );
+  }
+
   if (access.accountStatus === "resolver_rejected") {
     return (
       <ResolverRejectedView

@@ -102,6 +102,9 @@ export async function requireCurrentUser(ctx: AuthCtx): Promise<Doc<"users">> {
 
 export async function requireActiveUser(ctx: AuthCtx): Promise<Doc<"users">> {
   const user = await requireCurrentUser(ctx);
+  if (user.accountStatus === "inactive") {
+    throw new ConvexError("Account has been deactivated by a manager.");
+  }
   if (user.accountStatus !== "active") {
     throw new ConvexError("Account is pending manager approval.");
   }

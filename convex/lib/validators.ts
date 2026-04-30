@@ -10,6 +10,7 @@ export const accountStatusValidator = v.union(
   v.literal("active"),
   v.literal("pending_resolver_approval"),
   v.literal("resolver_rejected"),
+  v.literal("inactive"),
 );
 
 export const resolverRequestStatusValidator = v.union(

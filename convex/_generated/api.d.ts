@@ -23,6 +23,7 @@ import type * as ticketsManager from "../ticketsManager.js";
 import type * as ticketsReporter from "../ticketsReporter.js";
 import type * as ticketsResolver from "../ticketsResolver.js";
 import type * as ticketsShared from "../ticketsShared.js";
+import type * as usersManager from "../usersManager.js";
 
 import type {
   ApiFromModules,
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   ticketsReporter: typeof ticketsReporter;
   ticketsResolver: typeof ticketsResolver;
   ticketsShared: typeof ticketsShared;
+  usersManager: typeof usersManager;
 }>;
 
 /**

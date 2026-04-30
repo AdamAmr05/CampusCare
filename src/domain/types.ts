@@ -3,7 +3,8 @@ export type UserRole = "reporter" | "resolver" | "manager";
 export type AccountStatus =
   | "active"
   | "pending_resolver_approval"
-  | "resolver_rejected";
+  | "resolver_rejected"
+  | "inactive";
 
 export type ResolverRequestStatus = "pending" | "approved" | "rejected";
 
