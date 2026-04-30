@@ -69,6 +69,12 @@ export const create = mutation({
     const email = requireVerifiedGiuEmail(identity);
     const user = await requireCurrentUser(ctx);
 
+    if (user.accountStatus === "inactive") {
+      throw new ConvexError(
+        "Account has been deactivated by a manager. Contact a manager to restore access.",
+      );
+    }
+
     if (user.role === "manager") {
       throw new ConvexError("Managers cannot submit resolver requests.");
     }
@@ -152,6 +158,12 @@ export const reapply = mutation({
     const identity = await requireIdentity(ctx);
     const email = requireVerifiedGiuEmail(identity);
     const user = await requireCurrentUser(ctx);
+
+    if (user.accountStatus === "inactive") {
+      throw new ConvexError(
+        "Account has been deactivated by a manager. Contact a manager to restore access.",
+      );
+    }
 
     if (user.role === "manager") {
       throw new ConvexError("Managers cannot reapply for resolver access.");

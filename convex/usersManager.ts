@@ -129,6 +129,13 @@ export const directoryCounts = query({
   },
 });
 
+// DEFERRED: Deactivating a resolver who already owns tickets in `assigned` or
+// `in_progress` strands those tickets. The deactivated resolver can no longer
+// progress them (their resolver mutations require an active account), and the
+// manager has no reassignment flow today (assignResolver only handles
+// `open -> assigned`, not `assigned -> assigned` to a different resolver, and
+// not `in_progress -> assigned`). Until a manager-side reassignment mutation
+// exists, those tickets are stuck unless the same resolver is reactivated.
 export const deactivateResolver = mutation({
   args: {
     userId: v.id("users"),

@@ -117,10 +117,10 @@ export function ManagerHome({
     { initialNumItems: 12 },
   );
 
-  const directoryCountsRaw = useQuery(
-    api.usersManager.directoryCounts,
-    state.activeSection === "people" ? {} : "skip",
-  );
+  // Always query so the bottom-nav People badge (pending approvals) stays live
+  // outside the People section. The query is a few indexed `take(201)` reads,
+  // and the manager experience needs the cross-section signal.
+  const directoryCountsRaw = useQuery(api.usersManager.directoryCounts, {});
   const directoryCounts = useMemo(
     () =>
       directoryCountsRaw ?? {
