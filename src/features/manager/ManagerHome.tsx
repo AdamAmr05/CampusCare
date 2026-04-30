@@ -296,6 +296,10 @@ export function ManagerHome({
         openLightbox={navigation.openLightbox}
         onAssign={(ticket) => void ticketActions.onAssignResolver(ticket)}
         onCloseTicket={(ticket) => void ticketActions.onCloseTicket(ticket)}
+        onViewHistory={(ticket) => {
+          navigation.closeActionSheet();
+          navigation.openDetails(ticket);
+        }}
       />
 
       <TicketDetailsPanel
@@ -378,6 +382,7 @@ type ActionSheetContainerProps = {
   openLightbox: (uri: string) => void;
   onAssign: (ticket: Ticket) => void;
   onCloseTicket: (ticket: Ticket) => void;
+  onViewHistory: (ticket: Ticket) => void;
 };
 
 function ManagerActionSheetContainer({
@@ -396,6 +401,7 @@ function ManagerActionSheetContainer({
   openLightbox,
   onAssign,
   onCloseTicket,
+  onViewHistory,
 }: ActionSheetContainerProps): React.JSX.Element {
   const ticketId = actionTicket?._id ?? null;
 
@@ -436,6 +442,11 @@ function ManagerActionSheetContainer({
     onCloseTicket(actionTicket);
   }, [actionTicket, onCloseTicket]);
 
+  const handleViewHistory = useCallback(() => {
+    if (!actionTicket) return;
+    onViewHistory(actionTicket);
+  }, [actionTicket, onViewHistory]);
+
   const selectedResolverId = lookupNullable(
     ticketId,
     selectedResolverByTicket,
@@ -460,6 +471,7 @@ function ManagerActionSheetContainer({
       onAssign={handleAssign}
       onCloseTicket={handleCloseTicket}
       onOpenImage={openLightbox}
+      onViewHistory={handleViewHistory}
     />
   );
 }
@@ -618,6 +630,7 @@ function useManagerNavigation(deps: NavigationDeps) {
     closeDetails,
     closeLightbox,
     onCardPress,
+    openDetails,
     openLightbox,
   };
 }

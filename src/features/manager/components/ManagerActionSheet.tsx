@@ -36,6 +36,7 @@ type Props = {
   onAssign: () => void;
   onCloseTicket: () => void;
   onOpenImage: (uri: string) => void;
+  onViewHistory: () => void;
 };
 
 export function ManagerActionSheet({
@@ -54,6 +55,7 @@ export function ManagerActionSheet({
   onAssign,
   onCloseTicket,
   onOpenImage,
+  onViewHistory,
 }: Props): React.JSX.Element {
   return (
     <Modal
@@ -82,6 +84,7 @@ export function ManagerActionSheet({
               onAssign={onAssign}
               onCloseTicket={onCloseTicket}
               onOpenImage={onOpenImage}
+              onViewHistory={onViewHistory}
             />
           ) : null}
         </View>
@@ -107,6 +110,7 @@ function ManagerActionSheetBody({
   onAssign,
   onCloseTicket,
   onOpenImage,
+  onViewHistory,
 }: BodyProps): React.JSX.Element {
   const statusColors = getTicketStatusColors(ticket.status);
   const statusLabel = getTicketStatusShortLabel(ticket.status);
@@ -182,6 +186,29 @@ function ManagerActionSheetBody({
           onOpenImage={onOpenImage}
         />
       ) : null}
+
+      <Pressable
+        onPress={onViewHistory}
+        style={({ pressed }) => [
+          styles.secondaryButton,
+          pressed ? styles.controlPressed : null,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="View ticket history"
+      >
+        <Ionicons
+          name="time-outline"
+          size={16}
+          color={theme.colors.textPrimary}
+        />
+        <Text style={styles.secondaryButtonText}>View ticket history</Text>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={theme.colors.textMuted}
+          style={styles.secondaryButtonChevron}
+        />
+      </Pressable>
 
       {errorMessage ? (
         <View style={styles.errorRow}>
@@ -544,6 +571,28 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 14,
     letterSpacing: 0.2,
+  },
+  secondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSoft,
+    backgroundColor: theme.colors.surfaceMuted,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    minHeight: 44,
+  },
+  secondaryButtonText: {
+    flex: 1,
+    color: theme.colors.textPrimary,
+    fontWeight: "700",
+    fontSize: 13.5,
+    letterSpacing: 0.1,
+  },
+  secondaryButtonChevron: {
+    marginLeft: "auto",
   },
   buttonDisabled: {
     opacity: 0.6,
