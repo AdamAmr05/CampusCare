@@ -25,8 +25,16 @@ import type {
 } from "../tickets/types";
 import { ManagerActionHint } from "./components/ManagerActionHint";
 import { ManagerActionSheet } from "./components/ManagerActionSheet";
+import {
+  ManagerBottomNav,
+  type ManagerSection,
+} from "./components/ManagerBottomNav";
 import { ManagerRequestCardSkeleton } from "./components/ManagerRequestCardSkeleton";
 import { ManagerResolverRequestCard } from "./components/ManagerResolverRequestCard";
+import {
+  ManagerStatusFilter,
+  type MonitorStatusFilter,
+} from "./components/ManagerStatusFilter";
 import { ManagerTabBar, type ManagerTab } from "./components/ManagerTabBar";
 
 type Props = {
@@ -78,6 +86,32 @@ export function ManagerHome({
     { initialNumItems: 12 },
   );
 
+  const state = useManagerState();
+
+  const monitorTicketsQuery = usePaginatedQuery(
+    api.ticketsManager.listMonitor,
+    state.activeSection === "monitor"
+      ? { statusFilter: state.monitorFilter }
+      : "skip",
+    { initialNumItems: 12 },
+  );
+
+  const monitorCountsRaw = useQuery(
+    api.ticketsManager.monitorCounts,
+    state.activeSection === "monitor" ? {} : "skip",
+  );
+  const monitorCounts = useMemo(
+    () =>
+      monitorCountsRaw ?? {
+        open: 0,
+        assigned: 0,
+        in_progress: 0,
+        resolved: 0,
+        closed: 0,
+      },
+    [monitorCountsRaw],
+  );
+
   const activeResolversRaw = useQuery(
     api.ticketsManager.listActiveResolvers,
     {},
@@ -99,8 +133,11 @@ export function ManagerHome({
     () => resolvedTicketsQuery.results as Ticket[],
     [resolvedTicketsQuery.results],
   );
+  const monitorTickets = useMemo(
+    () => monitorTicketsQuery.results as Ticket[],
+    [monitorTicketsQuery.results],
+  );
 
-  const state = useManagerState();
   useSyncActionTicketWithLists(
     openTickets,
     resolvedTickets,
@@ -171,12 +208,25 @@ export function ManagerHome({
     ({ item }: { item: Ticket }) => (
       <WorkspaceTicketCard
         ticket={item}
-        onOpenDetails={navigation.onCardPress}
+        onOpenDetails={
+          state.activeSection === "monitor"
+            ? navigation.openDetails
+            : navigation.onCardPress
+        }
         onOpenImage={navigation.openLightbox}
-        trailing={<ManagerActionHint ticket={item} />}
+        trailing={
+          state.activeSection === "monitor" ? null : (
+            <ManagerActionHint ticket={item} />
+          )
+        }
       />
     ),
-    [navigation.onCardPress, navigation.openLightbox],
+    [
+      navigation.onCardPress,
+      navigation.openDetails,
+      navigation.openLightbox,
+      state.activeSection,
+    ],
   );
 
   const keyExtractor = useCallback(
@@ -185,19 +235,26 @@ export function ManagerHome({
   );
 
   const activeData = pickActiveData({
+    activeSection: state.activeSection,
     activeTab: state.activeTab,
+    monitorTickets,
     openTickets,
     pendingRequests,
     resolvedTickets,
   });
 
   const renderItem = pickRenderItem({
+    activeSection: state.activeSection,
     activeTab: state.activeTab,
     renderResolverRequest,
     renderTicket,
   });
 
   const onLoadMore = useCallback(() => {
+    if (state.activeSection === "monitor") {
+      monitorTicketsQuery.loadMore(10);
+      return;
+    }
     if (state.activeTab === "approvals") {
       resolverRequestsQuery.loadMore(10);
       return;
@@ -208,18 +265,25 @@ export function ManagerHome({
     }
     resolvedTicketsQuery.loadMore(10);
   }, [
+    monitorTicketsQuery,
     openTicketsQuery,
     resolvedTicketsQuery,
     resolverRequestsQuery,
+    state.activeSection,
     state.activeTab,
   ]);
 
   const activeStatus = pickActiveStatus({
+    activeSection: state.activeSection,
     activeTab: state.activeTab,
+    monitorStatus: monitorTicketsQuery.status,
     openStatus: openTicketsQuery.status,
     requestsStatus: resolverRequestsQuery.status,
     resolvedStatus: resolvedTicketsQuery.status,
   });
+
+  const actionBadgeCount =
+    pendingRequests.length + openTickets.length + resolvedTickets.length;
 
   return (
     <AppScreen>
@@ -231,9 +295,13 @@ export function ManagerHome({
           <ManagerListHeader
             email={email}
             onSignOut={onSignOut}
+            activeSection={state.activeSection}
             tabs={tabs}
             activeTab={state.activeTab}
             onSelectTab={state.setActiveTab}
+            monitorFilter={state.monitorFilter}
+            onSelectMonitorFilter={state.setMonitorFilter}
+            monitorCounts={monitorCounts}
             errorMessage={state.errorMessage}
           />
         }
@@ -241,6 +309,7 @@ export function ManagerHome({
           activeStatus === "LoadingFirstPage" ? (
             <WorkspaceListSkeleton
               renderRow={
+                state.activeSection === "action" &&
                 state.activeTab === "approvals"
                   ? (key, progress) => (
                       <ManagerRequestCardSkeleton
@@ -253,9 +322,21 @@ export function ManagerHome({
             />
           ) : (
             <WorkspaceEmptyState
-              illustration={getEmptyIllustration(state.activeTab)}
-              title={getEmptyTitle(state.activeTab)}
-              body={getEmptyBody(state.activeTab)}
+              illustration={getEmptyIllustration({
+                activeSection: state.activeSection,
+                activeTab: state.activeTab,
+                monitorFilter: state.monitorFilter,
+              })}
+              title={getEmptyTitle({
+                activeSection: state.activeSection,
+                activeTab: state.activeTab,
+                monitorFilter: state.monitorFilter,
+              })}
+              body={getEmptyBody({
+                activeSection: state.activeSection,
+                activeTab: state.activeTab,
+                monitorFilter: state.monitorFilter,
+              })}
             />
           )
         }
@@ -267,7 +348,7 @@ export function ManagerHome({
         }
         contentContainerStyle={[
           listHeaderStyles.listContent,
-          { paddingBottom: Math.max(24, insets.bottom + 16) },
+          { paddingBottom: Math.max(96, insets.bottom + 88) },
         ]}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={Platform.OS === "android"}
@@ -314,6 +395,14 @@ export function ManagerHome({
         imageUri={state.lightboxImageUri}
         onClose={navigation.closeLightbox}
       />
+
+      <View style={listHeaderStyles.bottomNavWrapper} pointerEvents="box-none">
+        <ManagerBottomNav
+          activeSection={state.activeSection}
+          onSelect={state.setActiveSection}
+          actionBadgeCount={actionBadgeCount}
+        />
+      </View>
     </AppScreen>
   );
 }
@@ -323,16 +412,30 @@ export function ManagerHome({
 function ManagerListHeader({
   email,
   onSignOut,
+  activeSection,
   tabs,
   activeTab,
   onSelectTab,
+  monitorFilter,
+  onSelectMonitorFilter,
+  monitorCounts,
   errorMessage,
 }: {
   email: string;
   onSignOut: () => void;
+  activeSection: ManagerSection;
   tabs: ReadonlyArray<{ key: ManagerTab; label: string; count: number }>;
   activeTab: ManagerTab;
   onSelectTab: (tab: ManagerTab) => void;
+  monitorFilter: MonitorStatusFilter;
+  onSelectMonitorFilter: (filter: MonitorStatusFilter) => void;
+  monitorCounts: {
+    open: number;
+    assigned: number;
+    in_progress: number;
+    resolved: number;
+    closed: number;
+  };
   errorMessage: string;
 }): React.JSX.Element {
   return (
@@ -343,14 +446,29 @@ function ManagerListHeader({
         illustration="managerAssignment"
         onSignOut={onSignOut}
       />
-      <ManagerTabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onSelectTab={onSelectTab}
-      />
-      <Text style={listHeaderStyles.sectionTitle}>
-        {getSectionTitle(activeTab)}
-      </Text>
+      {activeSection === "action" ? (
+        <>
+          <ManagerTabBar
+            tabs={tabs}
+            activeTab={activeTab}
+            onSelectTab={onSelectTab}
+          />
+          <Text style={listHeaderStyles.sectionTitle}>
+            {getSectionTitle(activeTab)}
+          </Text>
+        </>
+      ) : (
+        <>
+          <ManagerStatusFilter
+            active={monitorFilter}
+            onSelect={onSelectMonitorFilter}
+            counts={monitorCounts}
+          />
+          <Text style={listHeaderStyles.sectionTitle}>
+            {getMonitorSectionTitle(monitorFilter)}
+          </Text>
+        </>
+      )}
       {errorMessage ? (
         <Text style={listHeaderStyles.errorText}>{errorMessage}</Text>
       ) : null}
@@ -492,7 +610,11 @@ function lookupString(key: string | null, map: Record<string, string>): string {
 // ── Hooks ───────────────────────────────────────────────────────────────────
 
 function useManagerState() {
+  const [activeSection, setActiveSection] =
+    useState<ManagerSection>("action");
   const [activeTab, setActiveTab] = useState<ManagerTab>("approvals");
+  const [monitorFilter, setMonitorFilter] =
+    useState<MonitorStatusFilter>("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
@@ -513,8 +635,12 @@ function useManagerState() {
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   return {
+    activeSection,
+    setActiveSection,
     activeTab,
     setActiveTab,
+    monitorFilter,
+    setMonitorFilter,
     processingId,
     setProcessingId,
     errorMessage,
@@ -857,26 +983,33 @@ function buildTabs(
 }
 
 function pickActiveData({
+  activeSection,
   activeTab,
+  monitorTickets,
   openTickets,
   pendingRequests,
   resolvedTickets,
 }: {
+  activeSection: ManagerSection;
   activeTab: ManagerTab;
+  monitorTickets: Ticket[];
   openTickets: Ticket[];
   pendingRequests: ResolverRequest[];
   resolvedTickets: Ticket[];
 }): ReadonlyArray<{ _id: string }> {
+  if (activeSection === "monitor") return monitorTickets;
   if (activeTab === "approvals") return pendingRequests;
   if (activeTab === "assign") return openTickets;
   return resolvedTickets;
 }
 
 function pickRenderItem({
+  activeSection,
   activeTab,
   renderResolverRequest,
   renderTicket,
 }: {
+  activeSection: ManagerSection;
   activeTab: ManagerTab;
   renderResolverRequest: ({
     item,
@@ -885,43 +1018,84 @@ function pickRenderItem({
   }) => React.JSX.Element;
   renderTicket: ({ item }: { item: Ticket }) => React.JSX.Element;
 }) {
+  if (activeSection === "monitor") return renderTicket;
   if (activeTab === "approvals") return renderResolverRequest;
   return renderTicket;
 }
 
 function pickActiveStatus({
+  activeSection,
   activeTab,
+  monitorStatus,
   openStatus,
   requestsStatus,
   resolvedStatus,
 }: {
+  activeSection: ManagerSection;
   activeTab: ManagerTab;
+  monitorStatus: string;
   openStatus: string;
   requestsStatus: string;
   resolvedStatus: string;
 }): string {
+  if (activeSection === "monitor") return monitorStatus;
   if (activeTab === "approvals") return requestsStatus;
   if (activeTab === "assign") return openStatus;
   return resolvedStatus;
 }
 
-function getEmptyIllustration(tab: ManagerTab): CampusCareIllustrationName {
-  if (tab === "approvals") return "managerAssignment";
-  if (tab === "assign") return "campusLocation";
+type EmptyContext = {
+  activeSection: ManagerSection;
+  activeTab: ManagerTab;
+  monitorFilter: MonitorStatusFilter;
+};
+
+const MONITOR_EMPTY_ILLUSTRATION: Record<
+  MonitorStatusFilter,
+  CampusCareIllustrationName
+> = {
+  all: "managerAssignment",
+  open: "campusLocation",
+  assigned: "resolverProgress",
+  in_progress: "resolverProgress",
+  resolved: "ticketClosed",
+  closed: "ticketClosed",
+};
+
+function getEmptyIllustration(
+  context: EmptyContext,
+): CampusCareIllustrationName {
+  if (context.activeSection === "monitor") {
+    return MONITOR_EMPTY_ILLUSTRATION[context.monitorFilter];
+  }
+  if (context.activeTab === "approvals") return "managerAssignment";
+  if (context.activeTab === "assign") return "campusLocation";
   return "ticketClosed";
 }
 
-function getEmptyTitle(tab: ManagerTab): string {
-  if (tab === "approvals") return "No pending requests";
-  if (tab === "assign") return "Inbox empty";
+function getEmptyTitle(context: EmptyContext): string {
+  if (context.activeSection === "monitor") {
+    if (context.monitorFilter === "all") return "No tickets yet";
+    return `No ${getMonitorFilterLabel(context.monitorFilter).toLowerCase()} tickets`;
+  }
+  if (context.activeTab === "approvals") return "No pending requests";
+  if (context.activeTab === "assign") return "Inbox empty";
   return "Nothing to close";
 }
 
-function getEmptyBody(tab: ManagerTab): string {
-  if (tab === "approvals") {
+function getEmptyBody(context: EmptyContext): string {
+  if (context.activeSection === "monitor") {
+    if (context.monitorFilter === "all") {
+      return "Submitted tickets will appear here as they come in.";
+    }
+    return `Tickets with the "${getMonitorFilterLabel(
+      context.monitorFilter,
+    ).toLowerCase()}" status will appear here.`;
+  }
+  if (context.activeTab === "approvals") {
     return "No resolvers waiting for approval right now.";
   }
-  if (tab === "assign") {
+  if (context.activeTab === "assign") {
     return "No open tickets are waiting for an assignment.";
   }
   return "No resolved tickets are awaiting your closure.";
@@ -931,6 +1105,30 @@ function getSectionTitle(tab: ManagerTab): string {
   if (tab === "approvals") return "Resolver requests";
   if (tab === "assign") return "Open & unassigned";
   return "Awaiting closure";
+}
+
+function getMonitorSectionTitle(filter: MonitorStatusFilter): string {
+  if (filter === "all") return "All submitted tickets";
+  return `${getMonitorFilterLabel(filter)} tickets`;
+}
+
+function getMonitorFilterLabel(filter: MonitorStatusFilter): string {
+  switch (filter) {
+    case "all":
+      return "All";
+    case "open":
+      return "Open";
+    case "assigned":
+      return "Assigned";
+    case "in_progress":
+      return "In progress";
+    case "resolved":
+      return "Resolved";
+    case "closed":
+      return "Closed";
+    default:
+      return filter;
+  }
 }
 
 const listHeaderStyles = StyleSheet.create({
@@ -954,5 +1152,11 @@ const listHeaderStyles = StyleSheet.create({
     gap: 10,
     paddingBottom: 24,
     paddingHorizontal: 2,
+  },
+  bottomNavWrapper: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 });
