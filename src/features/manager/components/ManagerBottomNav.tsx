@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../../ui/theme";
 
-export type ManagerSection = "action" | "monitor";
+export type ManagerSection = "action" | "monitor" | "people";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -28,18 +28,36 @@ const SECTIONS: ReadonlyArray<SectionConfig> = [
     icon: "pulse-outline",
     iconActive: "pulse",
   },
+  {
+    key: "people",
+    label: "People",
+    icon: "people-outline",
+    iconActive: "people",
+  },
 ];
 
 type Props = {
   activeSection: ManagerSection;
   onSelect: (section: ManagerSection) => void;
   actionBadgeCount: number;
+  peopleBadgeCount: number;
 };
+
+function pickBadgeForSection(
+  sectionKey: ManagerSection,
+  actionBadgeCount: number,
+  peopleBadgeCount: number,
+): number {
+  if (sectionKey === "action") return actionBadgeCount;
+  if (sectionKey === "people") return peopleBadgeCount;
+  return 0;
+}
 
 export const ManagerBottomNav = memo(function ManagerBottomNav({
   activeSection,
   onSelect,
   actionBadgeCount,
+  peopleBadgeCount,
 }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
 
@@ -56,11 +74,11 @@ export const ManagerBottomNav = memo(function ManagerBottomNav({
             key={section.key}
             section={section}
             isActive={activeSection === section.key}
-            badge={
-              section.key === "action" && actionBadgeCount > 0
-                ? actionBadgeCount
-                : 0
-            }
+            badge={pickBadgeForSection(
+              section.key,
+              actionBadgeCount,
+              peopleBadgeCount,
+            )}
             onSelect={onSelect}
           />
         ))}

@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "../../../ui/theme";
 
-export type ManagerTab = "approvals" | "assign" | "close";
+export type ManagerTab = "assign" | "close";
 
 type Tab = {
   key: ManagerTab;
