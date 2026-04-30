@@ -29,6 +29,11 @@ import {
   ManagerBottomNav,
   type ManagerSection,
 } from "./components/ManagerBottomNav";
+import {
+  ManagerPeopleFilter,
+  type PeopleCount,
+  type PeopleFilter,
+} from "./components/ManagerPeopleFilter";
 import { ManagerRequestCardSkeleton } from "./components/ManagerRequestCardSkeleton";
 import { ManagerResolverRequestCard } from "./components/ManagerResolverRequestCard";
 import {
@@ -37,6 +42,11 @@ import {
   type MonitorStatusFilter,
 } from "./components/ManagerStatusFilter";
 import { ManagerTabBar, type ManagerTab } from "./components/ManagerTabBar";
+import {
+  ManagerUserCard,
+  type DirectoryUser,
+  type UserCardAction,
+} from "./components/ManagerUserCard";
 
 type Props = {
   email: string;
@@ -70,6 +80,10 @@ export function ManagerHome({
   const rejectRequest = useMutation(api.resolverRequests.reject);
   const assignResolver = useMutation(api.ticketsManager.assignResolver);
   const closeTicket = useMutation(api.ticketsManager.close);
+  const deactivateResolver = useMutation(api.usersManager.deactivateResolver);
+  const reactivateResolver = useMutation(api.usersManager.reactivateResolver);
+
+  const state = useManagerState();
 
   const resolverRequestsQuery = usePaginatedQuery(
     api.resolverRequests.listPending,
@@ -87,7 +101,45 @@ export function ManagerHome({
     { initialNumItems: 12 },
   );
 
-  const state = useManagerState();
+  const directoryQueryArgs = pickDirectoryQueryArgs(
+    state.activeSection,
+    state.peopleFilter,
+  );
+  const directoryQuery = usePaginatedQuery(
+    api.usersManager.listDirectory,
+    directoryQueryArgs,
+    { initialNumItems: 12 },
+  );
+
+  const inactiveDirectoryQuery = usePaginatedQuery(
+    api.usersManager.listInactiveResolvers,
+    pickInactiveQueryArgs(state.activeSection, state.peopleFilter),
+    { initialNumItems: 12 },
+  );
+
+  const directoryCountsRaw = useQuery(
+    api.usersManager.directoryCounts,
+    state.activeSection === "people" ? {} : "skip",
+  );
+  const directoryCounts = useMemo(
+    () =>
+      directoryCountsRaw ?? {
+        approvals: createEmptyPeopleCount(),
+        resolvers: createEmptyPeopleCount(),
+        managers: createEmptyPeopleCount(),
+        inactive: createEmptyPeopleCount(),
+      },
+    [directoryCountsRaw],
+  );
+
+  const directoryUsers = useMemo(
+    () => directoryQuery.results as DirectoryUser[],
+    [directoryQuery.results],
+  );
+  const inactiveUsers = useMemo(
+    () => inactiveDirectoryQuery.results as DirectoryUser[],
+    [inactiveDirectoryQuery.results],
+  );
 
   const monitorTicketsQuery = usePaginatedQuery(
     api.ticketsManager.listMonitor,
@@ -185,8 +237,8 @@ export function ManagerHome({
   );
 
   const tabs = useMemo(
-    () => buildTabs(pendingRequests.length, openTickets.length, resolvedTickets.length),
-    [openTickets.length, pendingRequests.length, resolvedTickets.length],
+    () => buildTabs(openTickets.length, resolvedTickets.length),
+    [openTickets.length, resolvedTickets.length],
   );
 
   const renderResolverRequest = useCallback(
@@ -230,6 +282,27 @@ export function ManagerHome({
     ],
   );
 
+  const directoryActions = useDirectoryActions({
+    deactivateResolver,
+    reactivateResolver,
+    setErrorMessage: state.setErrorMessage,
+    setProcessingId: state.setProcessingId,
+  });
+
+  const renderDirectoryUser = useCallback(
+    ({ item }: { item: DirectoryUser }) => (
+      <ManagerUserCard
+        user={item}
+        isProcessing={state.processingId === item._id}
+        action={pickUserCardAction(item, state.peopleFilter)}
+        isInactive={state.peopleFilter === "inactive"}
+        onDeactivate={(userId) => void directoryActions.deactivate(userId)}
+        onReactivate={(userId) => void directoryActions.reactivate(userId)}
+      />
+    ),
+    [directoryActions, state.peopleFilter, state.processingId],
+  );
+
   const keyExtractor = useCallback(
     (item: { _id: string }) => item._id,
     [],
@@ -238,6 +311,9 @@ export function ManagerHome({
   const activeData = pickActiveData({
     activeSection: state.activeSection,
     activeTab: state.activeTab,
+    peopleFilter: state.peopleFilter,
+    directoryUsers,
+    inactiveUsers,
     monitorTickets,
     openTickets,
     pendingRequests,
@@ -247,44 +323,51 @@ export function ManagerHome({
   const renderItem = pickRenderItem({
     activeSection: state.activeSection,
     activeTab: state.activeTab,
+    peopleFilter: state.peopleFilter,
     renderResolverRequest,
     renderTicket,
+    renderDirectoryUser,
   });
 
   const onLoadMore = useCallback(() => {
-    if (state.activeSection === "monitor") {
-      monitorTicketsQuery.loadMore(10);
-      return;
-    }
-    if (state.activeTab === "approvals") {
-      resolverRequestsQuery.loadMore(10);
-      return;
-    }
-    if (state.activeTab === "assign") {
-      openTicketsQuery.loadMore(10);
-      return;
-    }
-    resolvedTicketsQuery.loadMore(10);
+    const loader = pickActiveLoader({
+      activeSection: state.activeSection,
+      activeTab: state.activeTab,
+      peopleFilter: state.peopleFilter,
+      directoryQuery,
+      inactiveDirectoryQuery,
+      monitorTicketsQuery,
+      openTicketsQuery,
+      resolvedTicketsQuery,
+      resolverRequestsQuery,
+    });
+    loader.loadMore(10);
   }, [
+    directoryQuery,
+    inactiveDirectoryQuery,
     monitorTicketsQuery,
     openTicketsQuery,
     resolvedTicketsQuery,
     resolverRequestsQuery,
     state.activeSection,
     state.activeTab,
+    state.peopleFilter,
   ]);
 
   const activeStatus = pickActiveStatus({
     activeSection: state.activeSection,
     activeTab: state.activeTab,
+    peopleFilter: state.peopleFilter,
+    directoryStatus: directoryQuery.status,
+    inactiveStatus: inactiveDirectoryQuery.status,
     monitorStatus: monitorTicketsQuery.status,
     openStatus: openTicketsQuery.status,
     requestsStatus: resolverRequestsQuery.status,
     resolvedStatus: resolvedTicketsQuery.status,
   });
 
-  const actionBadgeCount =
-    pendingRequests.length + openTickets.length + resolvedTickets.length;
+  const actionBadgeCount = openTickets.length + resolvedTickets.length;
+  const peopleBadgeCount = directoryCounts.approvals.value;
 
   return (
     <AppScreen>
@@ -303,6 +386,9 @@ export function ManagerHome({
             monitorFilter={state.monitorFilter}
             onSelectMonitorFilter={state.setMonitorFilter}
             monitorCounts={monitorCounts}
+            peopleFilter={state.peopleFilter}
+            onSelectPeopleFilter={state.setPeopleFilter}
+            peopleCounts={directoryCounts}
             errorMessage={state.errorMessage}
           />
         }
@@ -310,8 +396,8 @@ export function ManagerHome({
           activeStatus === "LoadingFirstPage" ? (
             <WorkspaceListSkeleton
               renderRow={
-                state.activeSection === "action" &&
-                state.activeTab === "approvals"
+                state.activeSection === "people" &&
+                state.peopleFilter === "approvals"
                   ? (key, progress) => (
                       <ManagerRequestCardSkeleton
                         key={key}
@@ -327,16 +413,19 @@ export function ManagerHome({
                 activeSection: state.activeSection,
                 activeTab: state.activeTab,
                 monitorFilter: state.monitorFilter,
+                peopleFilter: state.peopleFilter,
               })}
               title={getEmptyTitle({
                 activeSection: state.activeSection,
                 activeTab: state.activeTab,
                 monitorFilter: state.monitorFilter,
+                peopleFilter: state.peopleFilter,
               })}
               body={getEmptyBody({
                 activeSection: state.activeSection,
                 activeTab: state.activeTab,
                 monitorFilter: state.monitorFilter,
+                peopleFilter: state.peopleFilter,
               })}
             />
           )
@@ -402,6 +491,7 @@ export function ManagerHome({
           activeSection={state.activeSection}
           onSelect={state.setActiveSection}
           actionBadgeCount={actionBadgeCount}
+          peopleBadgeCount={peopleBadgeCount}
         />
       </View>
     </AppScreen>
@@ -420,6 +510,9 @@ function ManagerListHeader({
   monitorFilter,
   onSelectMonitorFilter,
   monitorCounts,
+  peopleFilter,
+  onSelectPeopleFilter,
+  peopleCounts,
   errorMessage,
 }: {
   email: string;
@@ -437,6 +530,14 @@ function ManagerListHeader({
     resolved: MonitorCount;
     closed: MonitorCount;
   };
+  peopleFilter: PeopleFilter;
+  onSelectPeopleFilter: (filter: PeopleFilter) => void;
+  peopleCounts: {
+    approvals: PeopleCount;
+    resolvers: PeopleCount;
+    managers: PeopleCount;
+    inactive: PeopleCount;
+  };
   errorMessage: string;
 }): React.JSX.Element {
   return (
@@ -447,33 +548,98 @@ function ManagerListHeader({
         illustration="managerAssignment"
         onSignOut={onSignOut}
       />
-      {activeSection === "action" ? (
-        <>
-          <ManagerTabBar
-            tabs={tabs}
-            activeTab={activeTab}
-            onSelectTab={onSelectTab}
-          />
-          <Text style={listHeaderStyles.sectionTitle}>
-            {getSectionTitle(activeTab)}
-          </Text>
-        </>
-      ) : (
-        <>
-          <ManagerStatusFilter
-            active={monitorFilter}
-            onSelect={onSelectMonitorFilter}
-            counts={monitorCounts}
-          />
-          <Text style={listHeaderStyles.sectionTitle}>
-            {getMonitorSectionTitle(monitorFilter)}
-          </Text>
-        </>
-      )}
+      <ManagerListHeaderControls
+        activeSection={activeSection}
+        tabs={tabs}
+        activeTab={activeTab}
+        onSelectTab={onSelectTab}
+        monitorFilter={monitorFilter}
+        onSelectMonitorFilter={onSelectMonitorFilter}
+        monitorCounts={monitorCounts}
+        peopleFilter={peopleFilter}
+        onSelectPeopleFilter={onSelectPeopleFilter}
+        peopleCounts={peopleCounts}
+      />
       {errorMessage ? (
         <Text style={listHeaderStyles.errorText}>{errorMessage}</Text>
       ) : null}
     </View>
+  );
+}
+
+function ManagerListHeaderControls({
+  activeSection,
+  tabs,
+  activeTab,
+  onSelectTab,
+  monitorFilter,
+  onSelectMonitorFilter,
+  monitorCounts,
+  peopleFilter,
+  onSelectPeopleFilter,
+  peopleCounts,
+}: {
+  activeSection: ManagerSection;
+  tabs: ReadonlyArray<{ key: ManagerTab; label: string; count: number }>;
+  activeTab: ManagerTab;
+  onSelectTab: (tab: ManagerTab) => void;
+  monitorFilter: MonitorStatusFilter;
+  onSelectMonitorFilter: (filter: MonitorStatusFilter) => void;
+  monitorCounts: {
+    open: MonitorCount;
+    assigned: MonitorCount;
+    in_progress: MonitorCount;
+    resolved: MonitorCount;
+    closed: MonitorCount;
+  };
+  peopleFilter: PeopleFilter;
+  onSelectPeopleFilter: (filter: PeopleFilter) => void;
+  peopleCounts: {
+    approvals: PeopleCount;
+    resolvers: PeopleCount;
+    managers: PeopleCount;
+    inactive: PeopleCount;
+  };
+}): React.JSX.Element {
+  if (activeSection === "action") {
+    return (
+      <>
+        <ManagerTabBar
+          tabs={tabs}
+          activeTab={activeTab}
+          onSelectTab={onSelectTab}
+        />
+        <Text style={listHeaderStyles.sectionTitle}>
+          {getSectionTitle(activeTab)}
+        </Text>
+      </>
+    );
+  }
+  if (activeSection === "monitor") {
+    return (
+      <>
+        <ManagerStatusFilter
+          active={monitorFilter}
+          onSelect={onSelectMonitorFilter}
+          counts={monitorCounts}
+        />
+        <Text style={listHeaderStyles.sectionTitle}>
+          {getMonitorSectionTitle(monitorFilter)}
+        </Text>
+      </>
+    );
+  }
+  return (
+    <>
+      <ManagerPeopleFilter
+        active={peopleFilter}
+        onSelect={onSelectPeopleFilter}
+        counts={peopleCounts}
+      />
+      <Text style={listHeaderStyles.sectionTitle}>
+        {getPeopleSectionTitle(peopleFilter)}
+      </Text>
+    </>
   );
 }
 
@@ -613,9 +779,10 @@ function lookupString(key: string | null, map: Record<string, string>): string {
 function useManagerState() {
   const [activeSection, setActiveSection] =
     useState<ManagerSection>("action");
-  const [activeTab, setActiveTab] = useState<ManagerTab>("approvals");
+  const [activeTab, setActiveTab] = useState<ManagerTab>("assign");
   const [monitorFilter, setMonitorFilter] =
     useState<MonitorStatusFilter>("all");
+  const [peopleFilter, setPeopleFilter] = useState<PeopleFilter>("approvals");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
@@ -642,6 +809,8 @@ function useManagerState() {
     setActiveTab,
     monitorFilter,
     setMonitorFilter,
+    peopleFilter,
+    setPeopleFilter,
     processingId,
     setProcessingId,
     errorMessage,
@@ -832,6 +1001,56 @@ function useManagerRequestActions(deps: RequestActionsDeps) {
   return { onApprove, onReject };
 }
 
+type DirectoryActionsDeps = {
+  deactivateResolver: ReturnType<
+    typeof useMutation<typeof api.usersManager.deactivateResolver>
+  >;
+  reactivateResolver: ReturnType<
+    typeof useMutation<typeof api.usersManager.reactivateResolver>
+  >;
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
+  setProcessingId: React.Dispatch<React.SetStateAction<string | null>>;
+};
+
+function useDirectoryActions(deps: DirectoryActionsDeps) {
+  const {
+    deactivateResolver,
+    reactivateResolver,
+    setErrorMessage,
+    setProcessingId,
+  } = deps;
+
+  const runDirectoryMutation = useCallback(
+    async (
+      userId: Id<"users">,
+      mutate: (args: { userId: Id<"users"> }) => Promise<unknown>,
+    ) => {
+      setProcessingId(userId);
+      setErrorMessage("");
+      try {
+        await mutate({ userId });
+      } catch (error) {
+        setErrorMessage(formatError(error));
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [setErrorMessage, setProcessingId],
+  );
+
+  const deactivate = useCallback(
+    (userId: Id<"users">) => runDirectoryMutation(userId, deactivateResolver),
+    [deactivateResolver, runDirectoryMutation],
+  );
+
+  const reactivate = useCallback(
+    (userId: Id<"users">) => runDirectoryMutation(userId, reactivateResolver),
+    [reactivateResolver, runDirectoryMutation],
+  );
+
+  return { deactivate, reactivate };
+}
+
 type TicketActionsDeps = {
   activeResolvers: ResolverOption[];
   assignResolver: ReturnType<
@@ -972,12 +1191,10 @@ function useSyncActionTicketWithLists(
 // ── Pure helpers ────────────────────────────────────────────────────────────
 
 function buildTabs(
-  approvalsCount: number,
   assignCount: number,
   closeCount: number,
 ): ReadonlyArray<{ key: ManagerTab; label: string; count: number }> {
   return [
-    { key: "approvals", label: "Approvals", count: approvalsCount },
     { key: "assign", label: "Assign", count: assignCount },
     { key: "close", label: "Close", count: closeCount },
   ];
@@ -986,6 +1203,9 @@ function buildTabs(
 function pickActiveData({
   activeSection,
   activeTab,
+  peopleFilter,
+  directoryUsers,
+  inactiveUsers,
   monitorTickets,
   openTickets,
   pendingRequests,
@@ -993,13 +1213,20 @@ function pickActiveData({
 }: {
   activeSection: ManagerSection;
   activeTab: ManagerTab;
+  peopleFilter: PeopleFilter;
+  directoryUsers: DirectoryUser[];
+  inactiveUsers: DirectoryUser[];
   monitorTickets: Ticket[];
   openTickets: Ticket[];
   pendingRequests: ResolverRequest[];
   resolvedTickets: Ticket[];
 }): ReadonlyArray<{ _id: string }> {
+  if (activeSection === "people") {
+    if (peopleFilter === "approvals") return pendingRequests;
+    if (peopleFilter === "inactive") return inactiveUsers;
+    return directoryUsers;
+  }
   if (activeSection === "monitor") return monitorTickets;
-  if (activeTab === "approvals") return pendingRequests;
   if (activeTab === "assign") return openTickets;
   return resolvedTickets;
 }
@@ -1007,26 +1234,40 @@ function pickActiveData({
 function pickRenderItem({
   activeSection,
   activeTab,
+  peopleFilter,
   renderResolverRequest,
   renderTicket,
+  renderDirectoryUser,
 }: {
   activeSection: ManagerSection;
   activeTab: ManagerTab;
+  peopleFilter: PeopleFilter;
   renderResolverRequest: ({
     item,
   }: {
     item: ResolverRequest;
   }) => React.JSX.Element;
   renderTicket: ({ item }: { item: Ticket }) => React.JSX.Element;
+  renderDirectoryUser: ({
+    item,
+  }: {
+    item: DirectoryUser;
+  }) => React.JSX.Element;
 }) {
+  if (activeSection === "people") {
+    if (peopleFilter === "approvals") return renderResolverRequest;
+    return renderDirectoryUser;
+  }
   if (activeSection === "monitor") return renderTicket;
-  if (activeTab === "approvals") return renderResolverRequest;
   return renderTicket;
 }
 
 function pickActiveStatus({
   activeSection,
   activeTab,
+  peopleFilter,
+  directoryStatus,
+  inactiveStatus,
   monitorStatus,
   openStatus,
   requestsStatus,
@@ -1034,13 +1275,20 @@ function pickActiveStatus({
 }: {
   activeSection: ManagerSection;
   activeTab: ManagerTab;
+  peopleFilter: PeopleFilter;
+  directoryStatus: string;
+  inactiveStatus: string;
   monitorStatus: string;
   openStatus: string;
   requestsStatus: string;
   resolvedStatus: string;
 }): string {
+  if (activeSection === "people") {
+    if (peopleFilter === "approvals") return requestsStatus;
+    if (peopleFilter === "inactive") return inactiveStatus;
+    return directoryStatus;
+  }
   if (activeSection === "monitor") return monitorStatus;
-  if (activeTab === "approvals") return requestsStatus;
   if (activeTab === "assign") return openStatus;
   return resolvedStatus;
 }
@@ -1049,6 +1297,7 @@ type EmptyContext = {
   activeSection: ManagerSection;
   activeTab: ManagerTab;
   monitorFilter: MonitorStatusFilter;
+  peopleFilter: PeopleFilter;
 };
 
 const MONITOR_EMPTY_ILLUSTRATION: Record<
@@ -1063,28 +1312,45 @@ const MONITOR_EMPTY_ILLUSTRATION: Record<
   closed: "ticketClosed",
 };
 
+const PEOPLE_EMPTY_ILLUSTRATION: Record<
+  PeopleFilter,
+  CampusCareIllustrationName
+> = {
+  approvals: "managerAssignment",
+  resolvers: "resolverProgress",
+  managers: "managerAssignment",
+  inactive: "ticketClosed",
+};
+
 function getEmptyIllustration(
   context: EmptyContext,
 ): CampusCareIllustrationName {
+  if (context.activeSection === "people") {
+    return PEOPLE_EMPTY_ILLUSTRATION[context.peopleFilter];
+  }
   if (context.activeSection === "monitor") {
     return MONITOR_EMPTY_ILLUSTRATION[context.monitorFilter];
   }
-  if (context.activeTab === "approvals") return "managerAssignment";
   if (context.activeTab === "assign") return "campusLocation";
   return "ticketClosed";
 }
 
 function getEmptyTitle(context: EmptyContext): string {
+  if (context.activeSection === "people") {
+    return getPeopleEmptyTitle(context.peopleFilter);
+  }
   if (context.activeSection === "monitor") {
     if (context.monitorFilter === "all") return "No tickets yet";
     return `No ${getMonitorFilterLabel(context.monitorFilter).toLowerCase()} tickets`;
   }
-  if (context.activeTab === "approvals") return "No pending requests";
   if (context.activeTab === "assign") return "Inbox empty";
   return "Nothing to close";
 }
 
 function getEmptyBody(context: EmptyContext): string {
+  if (context.activeSection === "people") {
+    return getPeopleEmptyBody(context.peopleFilter);
+  }
   if (context.activeSection === "monitor") {
     if (context.monitorFilter === "all") {
       return "Submitted tickets will appear here as they come in.";
@@ -1093,17 +1359,33 @@ function getEmptyBody(context: EmptyContext): string {
       context.monitorFilter,
     ).toLowerCase()}" status will appear here.`;
   }
-  if (context.activeTab === "approvals") {
-    return "No resolvers waiting for approval right now.";
-  }
   if (context.activeTab === "assign") {
     return "No open tickets are waiting for an assignment.";
   }
   return "No resolved tickets are awaiting your closure.";
 }
 
+function getPeopleEmptyTitle(filter: PeopleFilter): string {
+  if (filter === "approvals") return "No pending requests";
+  if (filter === "resolvers") return "No active resolvers";
+  if (filter === "inactive") return "No deactivated resolvers";
+  return "No managers yet";
+}
+
+function getPeopleEmptyBody(filter: PeopleFilter): string {
+  if (filter === "approvals") {
+    return "No resolvers waiting for approval right now.";
+  }
+  if (filter === "resolvers") {
+    return "Approved resolvers will appear here once requests are accepted.";
+  }
+  if (filter === "inactive") {
+    return "Resolvers you deactivate will appear here and can be reactivated.";
+  }
+  return "Manager accounts will appear here as they are added.";
+}
+
 function getSectionTitle(tab: ManagerTab): string {
-  if (tab === "approvals") return "Resolver requests";
   if (tab === "assign") return "Open & unassigned";
   return "Awaiting closure";
 }
@@ -1111,6 +1393,13 @@ function getSectionTitle(tab: ManagerTab): string {
 function getMonitorSectionTitle(filter: MonitorStatusFilter): string {
   if (filter === "all") return "All submitted tickets";
   return `${getMonitorFilterLabel(filter)} tickets`;
+}
+
+function getPeopleSectionTitle(filter: PeopleFilter): string {
+  if (filter === "approvals") return "Resolver requests";
+  if (filter === "resolvers") return "Active resolvers";
+  if (filter === "inactive") return "Deactivated resolvers";
+  return "Managers";
 }
 
 function getMonitorFilterLabel(filter: MonitorStatusFilter): string {
@@ -1137,6 +1426,75 @@ function createEmptyMonitorCount(): MonitorCount {
     value: 0,
     isCapped: false,
   };
+}
+
+function createEmptyPeopleCount(): PeopleCount {
+  return {
+    value: 0,
+    isCapped: false,
+  };
+}
+
+function pickDirectoryQueryArgs(
+  activeSection: ManagerSection,
+  peopleFilter: PeopleFilter,
+): { filter: "resolvers" | "managers" } | "skip" {
+  if (activeSection !== "people") return "skip";
+  if (peopleFilter === "resolvers") return { filter: "resolvers" };
+  if (peopleFilter === "managers") return { filter: "managers" };
+  return "skip";
+}
+
+function pickInactiveQueryArgs(
+  activeSection: ManagerSection,
+  peopleFilter: PeopleFilter,
+): Record<string, never> | "skip" {
+  if (activeSection === "people" && peopleFilter === "inactive") return {};
+  return "skip";
+}
+
+function pickUserCardAction(
+  user: DirectoryUser,
+  peopleFilter: PeopleFilter,
+): UserCardAction {
+  if (peopleFilter === "inactive") return "reactivate";
+  if (peopleFilter === "resolvers" && user.role === "resolver") {
+    return "deactivate";
+  }
+  return "none";
+}
+
+type Loader = { loadMore: (n: number) => void };
+
+function pickActiveLoader({
+  activeSection,
+  activeTab,
+  peopleFilter,
+  directoryQuery,
+  inactiveDirectoryQuery,
+  monitorTicketsQuery,
+  openTicketsQuery,
+  resolvedTicketsQuery,
+  resolverRequestsQuery,
+}: {
+  activeSection: ManagerSection;
+  activeTab: ManagerTab;
+  peopleFilter: PeopleFilter;
+  directoryQuery: Loader;
+  inactiveDirectoryQuery: Loader;
+  monitorTicketsQuery: Loader;
+  openTicketsQuery: Loader;
+  resolvedTicketsQuery: Loader;
+  resolverRequestsQuery: Loader;
+}): Loader {
+  if (activeSection === "people") {
+    if (peopleFilter === "approvals") return resolverRequestsQuery;
+    if (peopleFilter === "inactive") return inactiveDirectoryQuery;
+    return directoryQuery;
+  }
+  if (activeSection === "monitor") return monitorTicketsQuery;
+  if (activeTab === "assign") return openTicketsQuery;
+  return resolvedTicketsQuery;
 }
 
 const listHeaderStyles = StyleSheet.create({
