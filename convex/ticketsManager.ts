@@ -14,6 +14,7 @@ import {
   truncateNotificationText,
 } from "./lib/notifications";
 import { ticketWithImageUrlValidator } from "./lib/ticketValidators";
+import { ticketStatusValidator } from "./lib/validators";
 
 const resolverOptionValidator = v.object({
   _id: v.id("users"),
@@ -257,5 +258,96 @@ export const close = mutation({
     }
 
     return null;
+  },
+});
+
+const monitorStatusFilterValidator = v.union(
+  v.literal("all"),
+  ticketStatusValidator,
+);
+
+export const listMonitor = query({
+  args: {
+    statusFilter: monitorStatusFilterValidator,
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: paginationResultValidator(ticketWithImageUrlValidator),
+  handler: async (ctx, args) => {
+    await requireRole(ctx, "manager");
+
+    const statusFilter = args.statusFilter;
+    const baseQuery =
+      statusFilter === "all"
+        ? ctx.db.query("tickets")
+        : ctx.db
+            .query("tickets")
+            .withIndex("by_status_and_updatedAt", (queryBuilder) =>
+              queryBuilder.eq("status", statusFilter),
+            );
+
+    const paginated = await baseQuery
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const page = await Promise.all(
+      paginated.page.map((ticket) => toTicketWithImageUrl(ctx, ticket)),
+    );
+
+    return {
+      ...paginated,
+      page,
+    };
+  },
+});
+
+const monitorCountsValidator = v.object({
+  open: v.number(),
+  assigned: v.number(),
+  in_progress: v.number(),
+  resolved: v.number(),
+  closed: v.number(),
+});
+
+export const monitorCounts = query({
+  args: {},
+  returns: monitorCountsValidator,
+  handler: async (ctx) => {
+    await requireRole(ctx, "manager");
+
+    const COUNT_CAP = 200;
+
+    const [openTickets, assignedTickets, inProgressTickets, resolvedTickets, closedTickets] =
+      await Promise.all([
+        ctx.db
+          .query("tickets")
+          .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "open"))
+          .take(COUNT_CAP),
+        ctx.db
+          .query("tickets")
+          .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "assigned"))
+          .take(COUNT_CAP),
+        ctx.db
+          .query("tickets")
+          .withIndex("by_status_and_updatedAt", (q) =>
+            q.eq("status", "in_progress"),
+          )
+          .take(COUNT_CAP),
+        ctx.db
+          .query("tickets")
+          .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "resolved"))
+          .take(COUNT_CAP),
+        ctx.db
+          .query("tickets")
+          .withIndex("by_status_and_updatedAt", (q) => q.eq("status", "closed"))
+          .take(COUNT_CAP),
+      ]);
+
+    return {
+      open: openTickets.length,
+      assigned: assignedTickets.length,
+      in_progress: inProgressTickets.length,
+      resolved: resolvedTickets.length,
+      closed: closedTickets.length,
+    };
   },
 });
