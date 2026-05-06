@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   Animated,
   Easing,
   FlatList,
@@ -312,10 +311,7 @@ function NotificationSheet({
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               isLoadingNotifications ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator color={theme.colors.textMuted} />
-                  <Text style={styles.emptyText}>Loading notifications...</Text>
-                </View>
+                <NotificationListSkeleton />
               ) : (
                 <View style={styles.emptyState}>
                   <Ionicons
