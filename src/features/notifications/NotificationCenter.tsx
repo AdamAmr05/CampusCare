@@ -34,7 +34,10 @@ export function NotificationCenter({
     { initialNumItems: 16 },
   );
 
-  const notifications = useMemo(() => results as AppNotification[], [results]);
+  const notifications = useMemo<AppNotification[]>(
+    () => (visible ? (results as AppNotification[]) : []),
+    [results, visible],
+  );
   const unreadDisplay = unreadCount ?? 0;
 
   const openModal = useCallback(() => {
