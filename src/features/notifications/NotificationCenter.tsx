@@ -1,6 +1,14 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Modal,
   Pressable,
@@ -12,6 +20,7 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { GlassPressable } from "../../ui/GlassSurface";
 import { theme } from "../../ui/theme";
+import { WorkspaceShimmer } from "../../ui/workspace/skeleton/WorkspaceShimmer";
 import type { AppNotification } from "./types";
 import { formatNotificationTimestamp, getNotificationTypeLabel } from "./utils";
 import { formatError } from "../../utils/formatError";
@@ -20,6 +29,9 @@ import { styles } from "./NotificationCenter.styles";
 type NotificationCenterProps = {
   variant?: "inline" | "row";
 };
+
+const NOTIFICATION_SKELETON_ROW_COUNT = 3;
+const SHIMMER_DURATION_MS = 1300;
 
 export function NotificationCenter({
   variant = "inline",
@@ -332,6 +344,79 @@ function NotificationSheet({
         </View>
       </View>
     </Modal>
+  );
+}
+
+function NotificationListSkeleton(): React.JSX.Element {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.setValue(0);
+    const animation = Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: SHIMMER_DURATION_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [progress]);
+
+  return (
+    <View
+      style={styles.skeletonList}
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+    >
+      {Array.from({ length: NOTIFICATION_SKELETON_ROW_COUNT }, (_, index) => (
+        <NotificationSkeletonRow
+          key={`notification-skeleton-${index}`}
+          progress={progress}
+        />
+      ))}
+    </View>
+  );
+}
+
+function NotificationSkeletonRow({
+  progress,
+}: {
+  progress: Animated.Value;
+}): React.JSX.Element {
+  return (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonMetaRow}>
+        <WorkspaceShimmer
+          progress={progress}
+          width={72}
+          height={24}
+          borderRadius={999}
+        />
+        <WorkspaceShimmer
+          progress={progress}
+          width={92}
+          height={12}
+          borderRadius={6}
+        />
+      </View>
+      <WorkspaceShimmer
+        progress={progress}
+        width={188}
+        height={16}
+        borderRadius={6}
+      />
+      <WorkspaceShimmer
+        progress={progress}
+        width={244}
+        height={14}
+        borderRadius={6}
+      />
+    </View>
   );
 }
 

@@ -145,6 +145,9 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     paddingBottom: theme.spacing.xl,
   },
+  skeletonList: {
+    gap: theme.spacing.sm,
+  },
   card: {
     position: "relative",
     borderRadius: theme.radius.md,
@@ -153,6 +156,14 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
     gap: theme.spacing.xs,
+  },
+  skeletonCard: {
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSoft,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   cardUnread: {
     borderColor: theme.colors.yellowDeep,
@@ -173,6 +184,12 @@ export const styles = StyleSheet.create({
     lineHeight: 19,
   },
   metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  skeletonMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
