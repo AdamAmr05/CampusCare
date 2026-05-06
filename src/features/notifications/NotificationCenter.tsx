@@ -30,7 +30,7 @@ export function NotificationCenter({
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.notifications.listMine,
-    {},
+    visible ? {} : "skip",
     { initialNumItems: 16 },
   );
 
