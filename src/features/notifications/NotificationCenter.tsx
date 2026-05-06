@@ -1,5 +1,12 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -138,6 +145,7 @@ export function NotificationCenter({
         errorMessage={errorMessage}
         isMarkingAllRead={isMarkingAllRead}
         isSendingTest={isSendingTest}
+        isLoadingNotifications={status === "LoadingFirstPage"}
         renderNotification={renderNotification}
         onClose={closeModal}
         onLoadMore={() => loadMore(16)}
@@ -217,6 +225,7 @@ type NotificationSheetProps = {
   errorMessage: string;
   isMarkingAllRead: boolean;
   isSendingTest: boolean;
+  isLoadingNotifications: boolean;
   renderNotification: ({
     item,
   }: {
@@ -236,6 +245,7 @@ function NotificationSheet({
   errorMessage,
   isMarkingAllRead,
   isSendingTest,
+  isLoadingNotifications,
   renderNotification,
   onClose,
   onLoadMore,
@@ -289,14 +299,21 @@ function NotificationSheet({
             renderItem={renderNotification}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name="notifications-off-outline"
-                  size={28}
-                  color={theme.colors.textMuted}
-                />
-                <Text style={styles.emptyText}>No notifications yet.</Text>
-              </View>
+              isLoadingNotifications ? (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator color={theme.colors.textMuted} />
+                  <Text style={styles.emptyText}>Loading notifications...</Text>
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons
+                    name="notifications-off-outline"
+                    size={28}
+                    color={theme.colors.textMuted}
+                  />
+                  <Text style={styles.emptyText}>No notifications yet.</Text>
+                </View>
+              )
             }
             ListFooterComponent={
               <View>
