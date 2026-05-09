@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as lib_accessTransitions from "../lib/accessTransitions.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_env from "../lib/env.js";
+import type * as lib_gamification from "../lib/gamification.js";
 import type * as lib_notifications from "../lib/notifications.js";
 import type * as lib_pushNotifications from "../lib/pushNotifications.js";
 import type * as lib_ticketValidators from "../lib/ticketValidators.js";
@@ -24,6 +25,7 @@ import type * as ticketsReporter from "../ticketsReporter.js";
 import type * as ticketsResolver from "../ticketsResolver.js";
 import type * as ticketsShared from "../ticketsShared.js";
 import type * as usersManager from "../usersManager.js";
+import type * as usersReporter from "../usersReporter.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "lib/accessTransitions": typeof lib_accessTransitions;
   "lib/auth": typeof lib_auth;
   "lib/env": typeof lib_env;
+  "lib/gamification": typeof lib_gamification;
   "lib/notifications": typeof lib_notifications;
   "lib/pushNotifications": typeof lib_pushNotifications;
   "lib/ticketValidators": typeof lib_ticketValidators;
@@ -48,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   ticketsResolver: typeof ticketsResolver;
   ticketsShared: typeof ticketsShared;
   usersManager: typeof usersManager;
+  usersReporter: typeof usersReporter;
 }>;
 
 /**

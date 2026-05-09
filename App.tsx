@@ -21,17 +21,17 @@ export default function App(): React.JSX.Element {
     [convexUrl],
   );
 
-  if (!publishableKey || !convex) {
-    return <ErrorScreen title="Configuration Required" message={MISSING_ENV_MESSAGE} />;
-  }
-
   return (
     <SafeAreaProvider>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <AppRoot />
-        </ConvexProviderWithClerk>
-      </ClerkProvider>
+      {!publishableKey || !convex ? (
+        <ErrorScreen title="Configuration Required" message={MISSING_ENV_MESSAGE} />
+      ) : (
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+            <AppRoot />
+          </ConvexProviderWithClerk>
+        </ClerkProvider>
+      )}
     </SafeAreaProvider>
   );
 }
