@@ -15,6 +15,7 @@ import {
 } from "./lib/notifications";
 import { ticketWithImageUrlValidator } from "./lib/ticketValidators";
 import { ticketStatusValidator } from "./lib/validators";
+import { awardXPForClosedTicket } from "./lib/gamification";
 
 const resolverOptionValidator = v.object({
   _id: v.id("users"),
@@ -256,6 +257,8 @@ export const close = mutation({
         dedupeKey: `ticket:${ticket._id}:closed:recipient:${ticket.resolverUserId}`,
       });
     }
+
+    await awardXPForClosedTicket(ctx, ticket.reporterUserId);
 
     return null;
   },

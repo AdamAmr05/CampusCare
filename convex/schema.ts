@@ -18,6 +18,9 @@ export default defineSchema({
     accountStatus: accountStatusValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
+    xp: v.optional(v.number()),
+    level: v.optional(v.number()),
+    badges: v.optional(v.array(v.string())),
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_email", ["email"])
