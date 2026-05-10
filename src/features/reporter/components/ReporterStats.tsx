@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const LEVEL_COLORS = {
   1: theme.colors.textSecondary,
-  2: theme.colors.primary,
+  2: theme.colors.yellow,
   3: "#8b5cf6", // Violet
   4: "#f59e0b", // Amber
   5: "#ef4444", // Red
@@ -42,7 +42,7 @@ export function ReporterStats() {
   const xpRequiredForCurrentLevel = nextLevelXp - currentLevelBaseXp;
   const progressPercent = Math.min(100, Math.max(0, (xpIntoCurrentLevel / xpRequiredForCurrentLevel) * 100));
 
-  const levelColor = LEVEL_COLORS[level as keyof typeof LEVEL_COLORS] || theme.colors.primary;
+  const levelColor = LEVEL_COLORS[level as keyof typeof LEVEL_COLORS] || theme.colors.yellow;
 
   return (
     <View style={styles.container}>
@@ -65,11 +65,11 @@ export function ReporterStats() {
 
       {badges.length > 0 && (
         <View style={styles.badgesContainer}>
-          <Text style={styles.badgesTitle}>Badges</Text>
+          <Text style={styles.badgesTitle}>Badges ({badges.length})</Text>
           <View style={styles.badgesList}>
             {badges.map((badge, idx) => (
               <View key={idx} style={styles.badgeItem}>
-                <MaterialCommunityIcons name="shield-check" size={16} color={theme.colors.primary} />
+                <MaterialCommunityIcons name="shield-check" size={16} color={theme.colors.yellow} />
                 <Text style={styles.badgeText}>{badge}</Text>
               </View>
             ))}

@@ -15,9 +15,11 @@ export function calculateLevel(xp: number): number {
 }
 
 export const BADGES = {
-  FIRST_REPORT: "First Report",
-  CAMPUS_HERO: "Campus Hero",
-  EAGLE_EYE: "Eagle Eye",
+  FIRST_REPORT: "First Notice",
+  LEVEL_2: "Campus Scout",
+  LEVEL_3: "Eagle Eye",
+  LEVEL_4: "Facility Guardian",
+  LEVEL_5: "GIU Hero",
 } as const;
 
 export async function awardXPForClosedTicket(
@@ -47,11 +49,13 @@ export async function awardXPForClosedTicket(
   // before the index updates, but we are inside the same transaction so it IS updated.
   const closedCount = closedTickets.length;
 
-  const currentBadges = new Set(user.badges ?? []);
-
+  const currentBadges = new Set<string>(user.badges ?? []);
+  
   if (closedCount >= 1) currentBadges.add(BADGES.FIRST_REPORT);
-  if (closedCount >= 5) currentBadges.add(BADGES.CAMPUS_HERO);
-  if (closedCount >= 10) currentBadges.add(BADGES.EAGLE_EYE);
+  if (newLevel >= 2) currentBadges.add(BADGES.LEVEL_2);
+  if (newLevel >= 3) currentBadges.add(BADGES.LEVEL_3);
+  if (newLevel >= 4) currentBadges.add(BADGES.LEVEL_4);
+  if (newLevel >= 5) currentBadges.add(BADGES.LEVEL_5);
 
   await ctx.db.patch(reporterUserId, {
     xp: newXp,
