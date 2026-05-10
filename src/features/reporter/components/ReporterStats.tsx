@@ -180,14 +180,14 @@ const styles = StyleSheet.create({
   backgroundArt: {
     position: "absolute",
     right: -34,
-    bottom: -54,
+    bottom: -30,
     width: 312,
     height: 396,
-    opacity: 0.62,
+    opacity: 0.66,
   },
   artWash: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 253, 246, 0.3)",
+    backgroundColor: "rgba(255, 253, 246, 0.24)",
   },
   header: {
     flexDirection: "row",
