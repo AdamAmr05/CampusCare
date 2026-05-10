@@ -297,7 +297,6 @@ export function ReporterHome({
         onSignOut={onSignOut}
         switchTo={switchTo}
       />
-      <ReporterStats />
       <ReporterTicketComposer
         category={category}
         description={description}
@@ -344,10 +343,13 @@ export function ReporterHome({
         ]}
         showsVerticalScrollIndicator={false}
         ListFooterComponent={
-          <WorkspaceLoadMoreFooter
-            canLoadMore={status === "CanLoadMore"}
-            onLoadMore={() => loadMore(10)}
-          />
+          <View style={listHeaderStyles.footer}>
+            <WorkspaceLoadMoreFooter
+              canLoadMore={status === "CanLoadMore"}
+              onLoadMore={() => loadMore(10)}
+            />
+            <ReporterStats />
+          </View>
         }
         removeClippedSubviews={Platform.OS === "android"}
         initialNumToRender={8}
@@ -398,5 +400,8 @@ const listHeaderStyles = StyleSheet.create({
     gap: 10,
     paddingBottom: 24,
     paddingHorizontal: 2,
+  },
+  footer: {
+    gap: 14,
   },
 });

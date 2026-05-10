@@ -1,25 +1,62 @@
 import React from "react";
+import { Image as ExpoImage } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { useQuery } from "convex/react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../../../../convex/_generated/api";
 import { theme } from "../../../ui/theme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+
+const campusImpactBackground = require("../../../../assets/illustrations/generated/campus-impact-background.png");
 
 const LEVEL_COLORS = {
-  1: theme.colors.textSecondary,
-  2: theme.colors.yellow,
-  3: "#8b5cf6", // Violet
-  4: "#f59e0b", // Amber
-  5: "#ef4444", // Red
+  1: theme.colors.yellowDeep,
+  2: theme.colors.yellowDeep,
+  3: "#8b5cf6",
+  4: "#f59e0b",
+  5: theme.colors.red,
 };
+
+const LEVEL_PHASES = [
+  { level: 1, label: "First Notice" },
+  { level: 2, label: "Campus Scout" },
+  { level: 3, label: "Eagle Eye" },
+  { level: 4, label: "Facility Guardian" },
+  { level: 5, label: "GIU Hero" },
+] as const;
+
+const BADGE_LABELS: Record<string, string> = {
+  first_notice: "First Notice",
+  campus_scout: "Campus Scout",
+  eagle_eye: "Eagle Eye",
+  facility_guardian: "Facility Guardian",
+  giu_hero: "GIU Hero",
+};
+
+function getPhaseLabel(level: number): string {
+  return LEVEL_PHASES.find((phase) => phase.level === level)?.label ?? `Level ${level}`;
+}
+
+function getBadgeLabel(badge: string): string {
+  return BADGE_LABELS[badge] ?? badge;
+}
+
+function getImpactCopy(closedTicketsCount: number): string {
+  if (closedTicketsCount === 0) {
+    return "Every solved report moves your campus impact forward.";
+  }
+  if (closedTicketsCount === 1) {
+    return "Your report helped close one campus issue.";
+  }
+  return `Your reports helped close ${closedTicketsCount} campus issues.`;
+}
 
 export function ReporterStats() {
   const stats = useQuery(api.usersReporter.myStats);
 
   if (stats === undefined) {
     return (
-      <View style={[styles.container, styles.loading]}>
-        <Text style={styles.loadingText}>Loading stats...</Text>
+      <View style={[styles.card, styles.loading]}>
+        <Text style={styles.loadingText}>Loading campus impact...</Text>
       </View>
     );
   }
@@ -29,161 +66,224 @@ export function ReporterStats() {
   }
 
   const { xp, level, badges, closedTicketsCount } = stats;
-
-  // Calculate next level XP requirement
-  // Level = floor(sqrt(xp/10)) + 1
-  // Next Level = Level + 1
-  // Required XP for Next Level = ((Next Level - 1)^2) * 10
   const nextLevel = level + 1;
   const nextLevelXp = Math.pow(nextLevel - 1, 2) * 10;
   const currentLevelBaseXp = Math.pow(level - 1, 2) * 10;
-  
   const xpIntoCurrentLevel = xp - currentLevelBaseXp;
   const xpRequiredForCurrentLevel = nextLevelXp - currentLevelBaseXp;
-  const progressPercent = Math.min(100, Math.max(0, (xpIntoCurrentLevel / xpRequiredForCurrentLevel) * 100));
-
-  const levelColor = LEVEL_COLORS[level as keyof typeof LEVEL_COLORS] || theme.colors.yellow;
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, (xpIntoCurrentLevel / xpRequiredForCurrentLevel) * 100),
+  );
+  const xpRemaining = Math.max(0, nextLevelXp - xp);
+  const levelColor = LEVEL_COLORS[level as keyof typeof LEVEL_COLORS] || theme.colors.yellowDeep;
+  const nextPhaseLabel = getPhaseLabel(nextLevel);
+  const earnedBadgeLabel = badges.length > 0 ? getBadgeLabel(badges[badges.length - 1]) : null;
+  const milestoneText =
+    xpRemaining > 0 ? `${xpRemaining} XP to ${nextPhaseLabel}` : `Next up: ${nextPhaseLabel}`;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.levelBadge}>
-          <MaterialCommunityIcons name="star-circle" size={24} color={levelColor} />
-          <Text style={[styles.levelText, { color: levelColor }]}>Level {level}</Text>
-        </View>
-        <Text style={styles.xpText}>{xp} XP</Text>
-      </View>
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Campus impact</Text>
+      <View style={styles.card}>
+        <ExpoImage
+          accessibilityLabel="Campus impact progress illustration"
+          contentFit="contain"
+          source={campusImpactBackground}
+          style={styles.backgroundArt}
+          transition={120}
+        />
+        <View pointerEvents="none" style={styles.artWash} />
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBarBackground}>
-          <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: levelColor }]} />
+        <View style={styles.header}>
+          <View style={styles.levelGroup}>
+            <View style={[styles.levelMark, { borderColor: levelColor }]}>
+              <MaterialCommunityIcons name="star" size={22} color={levelColor} />
+            </View>
+            <View style={styles.levelCopy}>
+              <Text style={styles.eyebrow}>Reporter progress</Text>
+              <Text style={styles.levelText}>Level {level}</Text>
+            </View>
+          </View>
+          <Text style={styles.xpText}>{xp} XP</Text>
         </View>
-        <Text style={styles.progressText}>
-          {nextLevelXp - xp} XP to Level {nextLevel}
-        </Text>
-      </View>
 
-      {badges.length > 0 && (
-        <View style={styles.badgesContainer}>
-          <Text style={styles.badgesTitle}>Badges ({badges.length})</Text>
-          <View style={styles.badgesList}>
-            {badges.map((badge, idx) => (
-              <View key={idx} style={styles.badgeItem}>
-                <MaterialCommunityIcons name="shield-check" size={16} color={theme.colors.yellow} />
-                <Text style={styles.badgeText}>{badge}</Text>
-              </View>
-            ))}
+        <Text style={styles.impactCopy}>{getImpactCopy(closedTicketsCount)}</Text>
+
+        <View style={styles.progressBlock}>
+          <View style={styles.progressMeta}>
+            <Text style={styles.currentPhase}>{getPhaseLabel(level)}</Text>
+            <Text style={styles.nextPhase}>{milestoneText}</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${progressPercent}%`, backgroundColor: levelColor },
+              ]}
+            />
           </View>
         </View>
-      )}
 
-      <View style={styles.statsFooter}>
-        <Text style={styles.statsFooterText}>{closedTicketsCount} issues resolved thanks to you!</Text>
+        <View style={styles.impactSummary}>
+          <View style={styles.summaryItem}>
+            <MaterialCommunityIcons
+              name="clipboard-check-outline"
+              size={17}
+              color={theme.colors.success}
+            />
+            <Text style={styles.summaryText}>
+              {closedTicketsCount} closed {closedTicketsCount === 1 ? "report" : "reports"}
+            </Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <MaterialCommunityIcons name="shield-star-outline" size={17} color={theme.colors.red} />
+            <Text style={styles.summaryText}>
+              {earnedBadgeLabel ? `Latest badge: ${earnedBadgeLabel}` : "First badge at first solved report"}
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    padding: 16,
+  section: {
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  card: {
+    minHeight: 250,
+    overflow: "hidden",
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginBottom: 8,
+    backgroundColor: theme.colors.surfaceMuted,
+    padding: 18,
   },
   loading: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 32,
   },
   loadingText: {
     color: theme.colors.textSecondary,
     fontSize: 14,
   },
+  backgroundArt: {
+    position: "absolute",
+    right: -34,
+    bottom: -54,
+    width: 312,
+    height: 396,
+    opacity: 0.62,
+  },
+  artWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 253, 246, 0.3)",
+  },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "space-between",
+    gap: 14,
   },
-  levelBadge: {
+  levelGroup: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 12,
+  },
+  levelMark: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.78)",
+    borderWidth: 2,
+  },
+  levelCopy: {
+    flex: 1,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: theme.colors.textMuted,
+    textTransform: "uppercase",
   },
   levelText: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 30,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
   },
   xpText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.textSecondary,
-  },
-  progressContainer: {
-    marginBottom: 16,
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: theme.colors.border,
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 6,
-  },
-  progressBarFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    textAlign: "right",
-  },
-  badgesContainer: {
-    marginTop: 4,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  badgesTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "800",
     color: theme.colors.textPrimary,
-    marginBottom: 8,
   },
-  badgesList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  impactCopy: {
+    width: "58%",
+    marginTop: 16,
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: "700",
+    color: theme.colors.textSecondary,
   },
-  badgeItem: {
+  progressBlock: {
+    marginTop: 22,
+    gap: 9,
+  },
+  progressMeta: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    gap: 4,
+    justifyContent: "space-between",
+    gap: 12,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "500",
+  currentPhase: {
+    fontSize: 13,
+    fontWeight: "800",
     color: theme.colors.textPrimary,
   },
-  statsFooter: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  statsFooterText: {
+  nextPhase: {
+    flexShrink: 1,
     fontSize: 13,
+    fontWeight: "800",
+    color: theme.colors.textMuted,
+    textAlign: "right",
+  },
+  progressTrack: {
+    height: 9,
+    overflow: "hidden",
+    borderRadius: 5,
+    backgroundColor: "rgba(234, 223, 189, 0.72)",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 5,
+  },
+  impactSummary: {
+    width: "66%",
+    gap: 8,
+    marginTop: 22,
+  },
+  summaryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  summaryText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "700",
     color: theme.colors.textSecondary,
-    textAlign: "center",
-    fontStyle: "italic",
   },
 });
