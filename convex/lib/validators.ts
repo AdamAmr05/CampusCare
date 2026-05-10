@@ -27,6 +27,14 @@ export const ticketStatusValidator = v.union(
   v.literal("closed"),
 );
 
+export const gamificationBadgeValidator = v.union(
+  v.literal("first_notice"),
+  v.literal("campus_scout"),
+  v.literal("eagle_eye"),
+  v.literal("facility_guardian"),
+  v.literal("giu_hero"),
+);
+
 export const notificationTypeValidator = v.union(
   v.literal("ticket_created"),
   v.literal("ticket_assigned"),

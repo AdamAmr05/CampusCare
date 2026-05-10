@@ -1,65 +1,72 @@
-import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import type { Infer } from "convex/values";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
+import { gamificationBadgeValidator } from "./validators";
 
 export const XP_PER_TICKET = 10;
 
-/**
- * Calculates the user's level based on their XP.
- * Level 1: 0-9 XP
- * Level 2: 10-39 XP
- * Level 3: 40-89 XP
- * Level 4: 90-159 XP
- */
-export function calculateLevel(xp: number): number {
-  return Math.floor(Math.sqrt(xp / 10)) + 1;
-}
+export type GamificationBadge = Infer<typeof gamificationBadgeValidator>;
 
 export const BADGES = {
-  FIRST_REPORT: "First Notice",
-  LEVEL_2: "Campus Scout",
-  LEVEL_3: "Eagle Eye",
-  LEVEL_4: "Facility Guardian",
-  LEVEL_5: "GIU Hero",
-} as const;
+  FIRST_NOTICE: "first_notice",
+  CAMPUS_SCOUT: "campus_scout",
+  EAGLE_EYE: "eagle_eye",
+  FACILITY_GUARDIAN: "facility_guardian",
+  GIU_HERO: "giu_hero",
+} as const satisfies Record<string, GamificationBadge>;
+
+export function calculateLevel(xp: number): number {
+  return Math.floor(Math.sqrt(xp / XP_PER_TICKET)) + 1;
+}
+
+function badgesForStats(args: {
+  closedTicketsCount: number;
+  level: number;
+  existingBadges: ReadonlyArray<GamificationBadge>;
+}): Array<GamificationBadge> {
+  const badges = new Set<GamificationBadge>(args.existingBadges);
+
+  if (args.closedTicketsCount >= 1) {
+    badges.add(BADGES.FIRST_NOTICE);
+  }
+  if (args.level >= 2) {
+    badges.add(BADGES.CAMPUS_SCOUT);
+  }
+  if (args.level >= 3) {
+    badges.add(BADGES.EAGLE_EYE);
+  }
+  if (args.level >= 4) {
+    badges.add(BADGES.FACILITY_GUARDIAN);
+  }
+  if (args.level >= 5) {
+    badges.add(BADGES.GIU_HERO);
+  }
+
+  return Array.from(badges);
+}
 
 export async function awardXPForClosedTicket(
   ctx: MutationCtx,
   reporterUserId: Id<"users">,
-) {
+): Promise<void> {
   const user = await ctx.db.get(reporterUserId);
-  if (!user || user.role !== "reporter") return;
+  if (!user || user.role !== "reporter") {
+    return;
+  }
 
-  const currentXp = user.xp ?? 0;
-  const newXp = currentXp + XP_PER_TICKET;
-  const newLevel = calculateLevel(newXp);
-
-  // Count closed tickets by this user to determine badges
-  // To avoid a massive query on every close, we can just use the new XP if we assume
-  // all XP comes from closed tickets, OR we can query the count.
-  // We'll query tickets closed by this user.
-  const closedTickets = await ctx.db
-    .query("tickets")
-    .withIndex("by_reporterUserId_and_createdAt", (q) =>
-      q.eq("reporterUserId", reporterUserId)
-    )
-    .filter((q) => q.eq(q.field("status"), "closed"))
-    .collect();
-
-  // The newly closed ticket might not be fully reflected if this runs in the same mutation 
-  // before the index updates, but we are inside the same transaction so it IS updated.
-  const closedCount = closedTickets.length;
-
-  const currentBadges = new Set<string>(user.badges ?? []);
-  
-  if (closedCount >= 1) currentBadges.add(BADGES.FIRST_REPORT);
-  if (newLevel >= 2) currentBadges.add(BADGES.LEVEL_2);
-  if (newLevel >= 3) currentBadges.add(BADGES.LEVEL_3);
-  if (newLevel >= 4) currentBadges.add(BADGES.LEVEL_4);
-  if (newLevel >= 5) currentBadges.add(BADGES.LEVEL_5);
+  const xp = (user.xp ?? 0) + XP_PER_TICKET;
+  const level = calculateLevel(xp);
+  const closedTicketsCount = (user.closedTicketsCount ?? 0) + 1;
+  const badges = badgesForStats({
+    closedTicketsCount,
+    level,
+    existingBadges: user.badges ?? [],
+  });
 
   await ctx.db.patch(reporterUserId, {
-    xp: newXp,
-    level: newLevel,
-    badges: Array.from(currentBadges),
+    xp,
+    level,
+    closedTicketsCount,
+    badges,
   });
 }
