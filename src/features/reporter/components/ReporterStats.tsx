@@ -13,6 +13,14 @@ const LEVEL_COLORS = {
   5: "#ef4444", // Red
 };
 
+const BADGE_LABELS = {
+  first_notice: "First Notice",
+  campus_scout: "Campus Scout",
+  eagle_eye: "Eagle Eye",
+  facility_guardian: "Facility Guardian",
+  giu_hero: "GIU Hero",
+} as const;
+
 export function ReporterStats() {
   const stats = useQuery(api.usersReporter.myStats);
 
@@ -37,7 +45,7 @@ export function ReporterStats() {
   const nextLevel = level + 1;
   const nextLevelXp = Math.pow(nextLevel - 1, 2) * 10;
   const currentLevelBaseXp = Math.pow(level - 1, 2) * 10;
-  
+
   const xpIntoCurrentLevel = xp - currentLevelBaseXp;
   const xpRequiredForCurrentLevel = nextLevelXp - currentLevelBaseXp;
   const progressPercent = Math.min(100, Math.max(0, (xpIntoCurrentLevel / xpRequiredForCurrentLevel) * 100));
@@ -70,7 +78,7 @@ export function ReporterStats() {
             {badges.map((badge, idx) => (
               <View key={idx} style={styles.badgeItem}>
                 <MaterialCommunityIcons name="shield-check" size={16} color={theme.colors.yellow} />
-                <Text style={styles.badgeText}>{badge}</Text>
+                <Text style={styles.badgeText}>{BADGE_LABELS[badge]}</Text>
               </View>
             ))}
           </View>
