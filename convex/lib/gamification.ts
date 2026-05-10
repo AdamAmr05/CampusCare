@@ -50,7 +50,7 @@ export async function awardXPForClosedTicket(
   reporterUserId: Id<"users">,
 ): Promise<void> {
   const user = await ctx.db.get(reporterUserId);
-  if (!user || user.role !== "reporter") {
+  if (!user || (user.role !== "reporter" && user.role !== "resolver")) {
     return;
   }
 
