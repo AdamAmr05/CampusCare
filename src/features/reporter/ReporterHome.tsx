@@ -30,6 +30,7 @@ import { uploadTicketImage } from "../tickets/uploadTicketImage";
 import { ReporterTicketDetailsModal } from "./ReporterTicketDetailsModal";
 import { ReporterRoomSelector } from "./components/ReporterRoomSelector";
 import { ReporterTicketComposer } from "./components/ReporterTicketComposer";
+import { ReporterStats } from "./components/ReporterStats";
 
 type Props = {
   email: string;
@@ -296,6 +297,7 @@ export function ReporterHome({
         onSignOut={onSignOut}
         switchTo={switchTo}
       />
+      <ReporterStats />
       <ReporterTicketComposer
         category={category}
         description={description}
