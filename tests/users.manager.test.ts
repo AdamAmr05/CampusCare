@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { api } from "../convex/_generated/api";
+import type { Id } from "../convex/_generated/dataModel";
 import { createHarness } from "./testHarness";
 
 type TestHarness = ReturnType<typeof createHarness>;
+type IdentityClient = ReturnType<TestHarness["withIdentity"]>;
+
+async function createStorageImageId(t: TestHarness): Promise<Id<"_storage">> {
+  return await t.run(async (ctx) => {
+    const bytes = new Uint8Array(16);
+    return await ctx.storage.store(new Blob([bytes], { type: "image/jpeg" }));
+  });
+}
 
 async function seedReporter(t: TestHarness, suffix: string) {
   const reporter = t.withIdentity({
@@ -67,6 +76,36 @@ async function seedApprovedResolver(t: TestHarness, suffix: string) {
   }
 
   return { resolver, access, manager };
+}
+
+async function createTicketAsReporter(
+  t: TestHarness,
+  reporter: IdentityClient,
+  suffix: string,
+) {
+  const imageStorageId = await createStorageImageId(t);
+
+  const response = await reporter.mutation(api.ticketsReporter.create, {
+    category: "Electrical",
+    description: `Hallway light is flickering frequently ${suffix}.`,
+    location: "Building B - Floor 2",
+    imageStorageId,
+  });
+
+  return response.ticketId;
+}
+
+async function getTicketHistoryLength(
+  viewer: IdentityClient,
+  ticketId: Id<"tickets">,
+) {
+  const details = await viewer.query(api.ticketsShared.getById, { ticketId });
+
+  if (!details) {
+    throw new Error("Expected ticket details.");
+  }
+
+  return details.history.length;
 }
 
 describe("manager user directory", () => {
@@ -149,6 +188,126 @@ describe("manager user directory", () => {
 
     expect(activeResolversAfterReactivate.map((user) => user._id)).toContain(access.userId);
     expect(resolverAccessAfterReactivate?.accountStatus).toBe("active");
+  });
+
+  it("blocks resolver deactivation while assigned tickets are still active", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "assigned-guard");
+    const { access, manager } = await seedApprovedResolver(t, "assigned-guard");
+    const ticketId = await createTicketAsReporter(t, reporter, "assigned");
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: access.userId,
+    });
+
+    const historyLengthBefore = await getTicketHistoryLength(manager, ticketId);
+
+    await expect(
+      manager.mutation(api.usersManager.deactivateResolver, {
+        userId: access.userId,
+      }),
+    ).rejects.toThrow(
+      /Cannot deactivate this resolver while they have active tickets\. Reassign or resolve 1 assigned ticket first\./,
+    );
+
+    const activeResolvers = await manager.query(api.ticketsManager.listActiveResolvers, {});
+    const historyLengthAfter = await getTicketHistoryLength(manager, ticketId);
+
+    expect(activeResolvers.map((user) => user._id)).toContain(access.userId);
+    expect(historyLengthAfter).toBe(historyLengthBefore);
+  });
+
+  it("blocks resolver deactivation while in-progress tickets are still active", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "in-progress-guard");
+    const { resolver, access, manager } = await seedApprovedResolver(
+      t,
+      "in-progress-guard",
+    );
+    const ticketId = await createTicketAsReporter(t, reporter, "in-progress");
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: access.userId,
+    });
+    await resolver.mutation(api.ticketsResolver.setInProgress, {
+      ticketId,
+    });
+
+    await expect(
+      manager.mutation(api.usersManager.deactivateResolver, {
+        userId: access.userId,
+      }),
+    ).rejects.toThrow(
+      /Cannot deactivate this resolver while they have active tickets\. Reassign or resolve 1 in-progress ticket first\./,
+    );
+
+    const activeResolvers = await manager.query(api.ticketsManager.listActiveResolvers, {});
+
+    expect(activeResolvers.map((user) => user._id)).toContain(access.userId);
+  });
+
+  it("uses a capped active-work error instead of requiring exact ticket counts", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "capped-guard");
+    const { access, manager } = await seedApprovedResolver(t, "capped-guard");
+
+    for (let index = 0; index < 6; index += 1) {
+      const ticketId = await createTicketAsReporter(
+        t,
+        reporter,
+        `capped-${index}`,
+      );
+
+      await manager.mutation(api.ticketsManager.assignResolver, {
+        ticketId,
+        resolverUserId: access.userId,
+      });
+    }
+
+    await expect(
+      manager.mutation(api.usersManager.deactivateResolver, {
+        userId: access.userId,
+      }),
+    ).rejects.toThrow(
+      /Cannot deactivate this resolver while they have active tickets\. Reassign or resolve 5\+ active tickets first\./,
+    );
+  });
+
+  it("allows resolver deactivation when assigned work is resolved and awaiting manager closure", async () => {
+    const t = createHarness();
+    const { reporter } = await seedReporter(t, "resolved-guard");
+    const { resolver, access, manager } = await seedApprovedResolver(t, "resolved-guard");
+    const ticketId = await createTicketAsReporter(t, reporter, "resolved");
+
+    await manager.mutation(api.ticketsManager.assignResolver, {
+      ticketId,
+      resolverUserId: access.userId,
+    });
+    await resolver.mutation(api.ticketsResolver.setInProgress, {
+      ticketId,
+    });
+    await resolver.mutation(api.ticketsResolver.markResolved, {
+      ticketId,
+      resolutionNote: "Replaced faulty ballast and verified stable output.",
+    });
+
+    const historyLengthBefore = await getTicketHistoryLength(manager, ticketId);
+
+    await manager.mutation(api.usersManager.deactivateResolver, {
+      userId: access.userId,
+    });
+
+    const activeResolvers = await manager.query(api.ticketsManager.listActiveResolvers, {});
+    const inactiveResolvers = await manager.query(api.usersManager.listInactiveResolvers, {
+      paginationOpts: { cursor: null, numItems: 20 },
+    });
+    const historyLengthAfter = await getTicketHistoryLength(manager, ticketId);
+
+    expect(activeResolvers.map((user) => user._id)).not.toContain(access.userId);
+    expect(inactiveResolvers.page.map((user) => user._id)).toContain(access.userId);
+    expect(historyLengthAfter).toBe(historyLengthBefore);
   });
 
   it("caps directory approval counts instead of reporting a false exact total", async () => {
