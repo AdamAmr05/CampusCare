@@ -561,7 +561,9 @@ function ManagerListHeader({
         peopleCounts={peopleCounts}
       />
       {errorMessage ? (
-        <Text style={listHeaderStyles.errorText}>{errorMessage}</Text>
+        <Text accessibilityRole="alert" style={listHeaderStyles.errorText}>
+          {errorMessage}
+        </Text>
       ) : null}
     </View>
   );
