@@ -285,6 +285,7 @@ export function ManagerHome({
   const directoryActions = useDirectoryActions({
     deactivateResolver,
     reactivateResolver,
+    setDirectoryActionError: state.setDirectoryActionError,
     setErrorMessage: state.setErrorMessage,
     setProcessingId: state.setProcessingId,
   });
@@ -296,11 +297,21 @@ export function ManagerHome({
         isProcessing={state.processingId === item._id}
         action={pickUserCardAction(item, state.peopleFilter)}
         isInactive={state.peopleFilter === "inactive"}
+        actionErrorMessage={
+          state.directoryActionError?.userId === item._id
+            ? state.directoryActionError.message
+            : ""
+        }
         onDeactivate={(userId) => void directoryActions.deactivate(userId)}
         onReactivate={(userId) => void directoryActions.reactivate(userId)}
       />
     ),
-    [directoryActions, state.peopleFilter, state.processingId],
+    [
+      directoryActions,
+      state.directoryActionError,
+      state.peopleFilter,
+      state.processingId,
+    ],
   );
 
   const keyExtractor = useCallback(
@@ -787,6 +798,10 @@ function useManagerState() {
   const [peopleFilter, setPeopleFilter] = useState<PeopleFilter>("approvals");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [directoryActionError, setDirectoryActionError] = useState<{
+    userId: Id<"users">;
+    message: string;
+  } | null>(null);
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
   const [selectedResolverByTicket, setSelectedResolverByTicket] = useState<
     Record<string, string>
@@ -817,6 +832,8 @@ function useManagerState() {
     setProcessingId,
     errorMessage,
     setErrorMessage,
+    directoryActionError,
+    setDirectoryActionError,
     decisionNotes,
     setDecisionNotes,
     selectedResolverByTicket,
@@ -1010,6 +1027,9 @@ type DirectoryActionsDeps = {
   reactivateResolver: ReturnType<
     typeof useMutation<typeof api.usersManager.reactivateResolver>
   >;
+  setDirectoryActionError: React.Dispatch<
+    React.SetStateAction<{ userId: Id<"users">; message: string } | null>
+  >;
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>;
   setProcessingId: React.Dispatch<React.SetStateAction<string | null>>;
 };
@@ -1018,6 +1038,7 @@ function useDirectoryActions(deps: DirectoryActionsDeps) {
   const {
     deactivateResolver,
     reactivateResolver,
+    setDirectoryActionError,
     setErrorMessage,
     setProcessingId,
   } = deps;
@@ -1029,15 +1050,18 @@ function useDirectoryActions(deps: DirectoryActionsDeps) {
     ) => {
       setProcessingId(userId);
       setErrorMessage("");
+      setDirectoryActionError(null);
       try {
         await mutate({ userId });
       } catch (error) {
-        setErrorMessage(formatError(error));
+        const message = formatError(error);
+        setErrorMessage(message);
+        setDirectoryActionError({ userId, message });
       } finally {
         setProcessingId(null);
       }
     },
-    [setErrorMessage, setProcessingId],
+    [setDirectoryActionError, setErrorMessage, setProcessingId],
   );
 
   const deactivate = useCallback(

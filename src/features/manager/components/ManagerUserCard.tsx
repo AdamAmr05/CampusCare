@@ -12,6 +12,11 @@ export type DirectoryUser = {
   fullName: string;
   role: UserRole;
   createdAt: number;
+  activeWork: {
+    assignedCount: number;
+    inProgressCount: number;
+    isCapped: boolean;
+  } | null;
 };
 
 export type UserCardAction = "none" | "deactivate" | "reactivate";
@@ -21,6 +26,7 @@ type Props = {
   isProcessing: boolean;
   action: UserCardAction;
   isInactive?: boolean;
+  actionErrorMessage?: string;
   onDeactivate?: (userId: Id<"users">) => void;
   onReactivate?: (userId: Id<"users">) => void;
 };
@@ -30,9 +36,12 @@ export const ManagerUserCard = memo(function ManagerUserCard({
   isProcessing,
   action,
   isInactive,
+  actionErrorMessage,
   onDeactivate,
   onReactivate,
 }: Props): React.JSX.Element {
+  const activeWorkLabel = formatActiveWork(user.activeWork);
+
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
@@ -65,6 +74,16 @@ export const ManagerUserCard = memo(function ManagerUserCard({
                 <Text style={styles.inactiveBadgeText}>Inactive</Text>
               </View>
             ) : null}
+            {activeWorkLabel ? (
+              <View style={styles.workloadBadge}>
+                <Ionicons
+                  name="briefcase-outline"
+                  size={10}
+                  color={theme.colors.textPrimary}
+                />
+                <Text style={styles.workloadBadgeText}>{activeWorkLabel}</Text>
+              </View>
+            ) : null}
             <Text style={styles.metaDot}>·</Text>
             <Text style={styles.metaText}>
               Joined {formatRelativeTimestamp(user.createdAt)}
@@ -81,6 +100,12 @@ export const ManagerUserCard = memo(function ManagerUserCard({
         onDeactivate={onDeactivate}
         onReactivate={onReactivate}
       />
+
+      {actionErrorMessage ? (
+        <Text accessibilityRole="alert" style={styles.actionErrorText}>
+          {actionErrorMessage}
+        </Text>
+      ) : null}
     </View>
   );
 });
@@ -172,6 +197,27 @@ function getRoleIcon(
   if (role === "manager") return "shield-checkmark-outline";
   if (role === "resolver") return "construct-outline";
   return "person-outline";
+}
+
+function formatActiveWork(
+  activeWork: DirectoryUser["activeWork"],
+): string | null {
+  if (!activeWork) return null;
+
+  const total = activeWork.assignedCount + activeWork.inProgressCount;
+  if (total === 0) return null;
+  if (activeWork.isCapped) return "5+ active tickets";
+
+  const parts = [
+    activeWork.assignedCount > 0
+      ? `${activeWork.assignedCount} assigned`
+      : null,
+    activeWork.inProgressCount > 0
+      ? `${activeWork.inProgressCount} in progress`
+      : null,
+  ].filter((part): part is string => part !== null);
+
+  return parts.join(" · ");
 }
 
 const styles = StyleSheet.create({
@@ -304,6 +350,28 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  workloadBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSoft,
+  },
+  workloadBadgeText: {
+    color: theme.colors.textPrimary,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+  actionErrorText: {
+    color: theme.colors.red,
+    fontSize: 12,
+    fontWeight: "500",
   },
   buttonDisabled: {
     opacity: 0.6,
