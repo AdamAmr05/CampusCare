@@ -4,7 +4,7 @@ import {
 } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { requireRole } from "./lib/auth";
 import { accountStatusValidator, userRoleValidator } from "./lib/validators";
@@ -13,6 +13,12 @@ const directoryFilterValidator = v.union(
   v.literal("resolvers"),
   v.literal("managers"),
 );
+
+const activeWorkValidator = v.object({
+  assignedCount: v.number(),
+  inProgressCount: v.number(),
+  isCapped: v.boolean(),
+});
 
 const directoryEntryValidator = v.object({
   _id: v.id("users"),
@@ -23,6 +29,7 @@ const directoryEntryValidator = v.object({
   accountStatus: accountStatusValidator,
   createdAt: v.number(),
   updatedAt: v.number(),
+  activeWork: v.union(activeWorkValidator, v.null()),
 });
 
 export const listDirectory = query({
@@ -44,16 +51,22 @@ export const listDirectory = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    const page = paginated.page.map((user) => ({
-      _id: user._id,
-      _creationTime: user._creationTime,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      accountStatus: user.accountStatus,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }));
+    const page = await Promise.all(
+      paginated.page.map(async (user) => ({
+        _id: user._id,
+        _creationTime: user._creationTime,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        activeWork:
+          user.role === "resolver"
+            ? await getActiveResolverTicketSummary(ctx, user._id)
+            : null,
+      })),
+    );
 
     return {
       ...paginated,
@@ -84,7 +97,7 @@ function toCappedCount(length: number, cap: number) {
 const ACTIVE_RESOLVER_TICKET_COUNT_CAP = 5;
 
 async function getActiveResolverTicketSummary(
-  ctx: MutationCtx,
+  ctx: QueryCtx,
   resolverUserId: Id<"users">,
 ) {
   const limit = ACTIVE_RESOLVER_TICKET_COUNT_CAP + 1;
@@ -104,6 +117,9 @@ async function getActiveResolverTicketSummary(
       .take(limit),
   ]);
 
+  const activeTicketCount =
+    assignedTickets.length + inProgressTickets.length;
+
   return {
     assignedCount: Math.min(
       assignedTickets.length,
@@ -113,9 +129,7 @@ async function getActiveResolverTicketSummary(
       inProgressTickets.length,
       ACTIVE_RESOLVER_TICKET_COUNT_CAP,
     ),
-    isCapped:
-      assignedTickets.length > ACTIVE_RESOLVER_TICKET_COUNT_CAP ||
-      inProgressTickets.length > ACTIVE_RESOLVER_TICKET_COUNT_CAP,
+    isCapped: activeTicketCount > ACTIVE_RESOLVER_TICKET_COUNT_CAP,
   };
 }
 
@@ -308,6 +322,7 @@ export const listInactiveResolvers = query({
       accountStatus: user.accountStatus,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      activeWork: null,
     }));
 
     return {
