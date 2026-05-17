@@ -1,111 +1,173 @@
-# CampusCare Mobile (Expo + Convex + Clerk)
+# CampusCare Mobile
 
-This repository now includes:
-- Clerk authentication for Expo
-- Convex backend auth enforcement and role onboarding
-- Resolver request + manager approval workflow
-- Role-based ticket lifecycle backend (reporter, resolver, manager)
+CampusCare is an Expo React Native app with a Convex backend for GIU facility issue reporting. Reporters submit tickets with images, managers assign and close work, and resolvers update assigned tickets through the repair lifecycle.
+
+## Deliverables
+
+- API documentation: [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
+- Database schema: [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
+- Product context and SRS source notes: [context.md](context.md)
+- Convex backend: [convex/](convex/)
+- Mobile app source: [src/](src/)
+
+## Tech Stack
+
+- Mobile: Expo, React Native, TypeScript
+- Backend and realtime data: Convex
+- Authentication: Clerk for Expo with Convex JWT auth
+- File storage: Convex File Storage
+- Push notifications: Expo Notifications with `@convex-dev/expo-push-notifications`
+- Package manager: npm
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20 or newer
 - npm
-- Convex project initialized (`npx convex dev`)
-- Clerk application with a JWT template named `convex`
+- Expo development environment for the target platform
+- Convex account and project
+- Clerk application with email verification enabled
+- For iOS or Android push testing, a physical device and EAS credentials
 
-## Environment variables
+## Environment Setup
 
-Create a local `.env` file from `.env.example`:
+Create a local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
 Required variables:
-- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
-- `EXPO_PUBLIC_CONVEX_URL`
-- `CLERK_JWT_ISSUER_DOMAIN`
-- `MANAGER_EMAIL_ALLOWLIST` (comma-separated lowercase emails)
-- `EXPO_PUBLIC_EAS_PROJECT_ID` (recommended fallback for Expo push token registration)
 
-Push flow note:
-- App now auto-registers push tokens after authenticated sync using `expo-notifications`.
-- Registration entrypoint: `src/features/notifications/usePushRegistration.ts`.
-- Delivery transport: `@convex-dev/expo-push-notifications`.
-- Backend registration mutation: `notifications.registerPushToken`.
-- Registration is tracked per app installation so one user can receive push on multiple devices.
+| Variable | Purpose |
+| --- | --- |
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key used by the Expo app. |
+| `EXPO_PUBLIC_CONVEX_URL` | Convex deployment URL used by the client. |
+| `CLERK_JWT_ISSUER_DOMAIN` | Clerk issuer domain used by Convex auth config. |
+| `MANAGER_EMAIL_ALLOWLIST` | Comma-separated lowercase GIU manager emails. |
+| `EXPO_PUBLIC_EAS_PROJECT_ID` | EAS project id used for Expo push registration. |
 
-Push credentials (EAS):
-- iOS (APNs): run `eas credentials -p ios` and set up a Push Key for your bundle identifier.
-- Android (FCM v1): run `eas credentials -p android` and upload your Firebase service account JSON.
-- Build and test on a physical device using a development build (`eas build --profile development`).
+Only verified emails under `giu-uni.de` or its subdomains can access protected app workflows. Manager access is provisioned from `MANAGER_EMAIL_ALLOWLIST`; managers are not created through normal app onboarding.
 
-## Clerk setup notes
+## Clerk Setup
 
-1. In Clerk Dashboard, create a JWT template using the Convex preset.
-2. Keep the template/application ID as `convex`.
-3. Copy Clerk Frontend API URL to `CLERK_JWT_ISSUER_DOMAIN`.
-4. Use Expo auth with email verification code flow.
+1. Create a Clerk application.
+2. Enable email verification.
+3. Create a JWT template using the Convex preset.
+4. Keep the JWT template name as `convex`.
+5. Copy the Clerk issuer/frontend API URL into `CLERK_JWT_ISSUER_DOMAIN`.
+6. Put the Clerk publishable key in `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 
-## Install and run
+## Convex Setup
+
+Install dependencies first:
 
 ```bash
 npm install
+```
+
+Start Convex development sync:
+
+```bash
 npm run convex:dev
+```
+
+During first setup, follow the Convex CLI prompts to create or connect the project. After Convex prints the deployment URL, copy it into `EXPO_PUBLIC_CONVEX_URL`.
+
+Set backend environment variables in Convex if needed:
+
+```bash
+npx convex env set CLERK_JWT_ISSUER_DOMAIN "https://your-clerk-issuer.example"
+npx convex env set MANAGER_EMAIL_ALLOWLIST "manager1@giu-uni.de,manager2@giu-uni.de"
+```
+
+Deploy backend functions when preparing a shared build:
+
+```bash
+npm run convex:deploy
+```
+
+## Run the App
+
+Start Expo:
+
+```bash
 npm run start
 ```
 
 Platform shortcuts:
-- Android: `npm run android`
-- iOS: `npm run ios`
-- Web: `npm run web`
 
-## Typecheck
+```bash
+npm run android
+npm run ios
+npm run ios:native
+npm run web
+```
+
+For push notifications, use a physical device and a development build. Configure credentials through EAS:
+
+```bash
+eas credentials -p ios
+eas credentials -p android
+```
+
+## Quality Checks
+
+Run TypeScript validation:
 
 ```bash
 npm run typecheck
 ```
 
-## Backend Tests
+Run linting:
+
+```bash
+npm run lint
+npm run lint:ci
+```
+
+Run backend tests:
 
 ```bash
 npx vitest run tests/tickets.backend.test.ts
 ```
 
-## Auth and role behavior
+Run all tests:
 
-- Only verified emails ending with `@giu-uni.de` can access protected backend features.
-- Manager role is controlled by `MANAGER_EMAIL_ALLOWLIST` in Convex env vars.
-- Reporter is default onboarding intent.
-- Resolver onboarding is requested via a separate sign-in path and requires manager approval.
-- Pending/rejected resolver-request users are blocked from protected app features.
+```bash
+npx vitest run
+```
 
-## Convex functions added
+## Core Workflows
 
-- `auth.upsertCurrentUser`
-- `auth.getMyAccess`
-- `resolverRequests.create`
-- `resolverRequests.getMineLatest`
-- `resolverRequests.reapply`
-- `resolverRequests.listPending`
-- `resolverRequests.approve`
-- `resolverRequests.reject`
-- `ticketsReporter.create`
-- `ticketsReporter.listMine`
-- `ticketsReporter.getMineById`
-- `ticketsManager.listActiveResolvers`
-- `ticketsManager.listOpenUnassigned`
-- `ticketsManager.assignResolver`
-- `ticketsManager.listResolvedAwaitingClose`
-- `ticketsManager.close`
-- `ticketsResolver.listAssignedToMe`
-- `ticketsResolver.setInProgress`
-- `ticketsResolver.markResolved`
-- `ticketsShared.getById`
-- `notifications.listMine`
-- `notifications.getUnreadCount`
-- `notifications.markRead`
-- `notifications.markAllRead`
-- `notifications.sendTestToMe`
-- `notifications.registerPushToken`
-- `notifications.disablePushToken`
+Reporter:
+
+1. Sign in with a verified GIU email.
+2. Upload a ticket image.
+3. Submit category, location, and description.
+4. Track status and notifications.
+
+Manager:
+
+1. Sign in with an allowlisted manager email.
+2. Review open unassigned tickets.
+3. Assign active resolvers.
+4. Review resolved tickets.
+5. Close tickets after final confirmation.
+
+Resolver:
+
+1. Sign in with a verified GIU email.
+2. Request resolver access if not yet approved.
+3. View assigned tickets.
+4. Mark work in progress.
+5. Resolve with a required resolution note.
+
+## Important Backend Rules
+
+- Convex functions are the backend API surface.
+- Public functions validate args and return values.
+- Role access is enforced server-side.
+- Ticket status history is append-only.
+- Ticket images are stored in Convex File Storage.
+- Resolver resolution notes are required before manager closure.
+
