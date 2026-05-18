@@ -44,6 +44,8 @@ async function getLatestResolverRequestForUser(
   ctx: ReaderCtx,
   userId: Id<"users">,
 ) {
+  // SQL-ish: SELECT * FROM resolver_requests WHERE requesterUserId = userId ORDER BY newest_first LIMIT 1.
+  // Given a user ID, find that user's most recent resolver access request, or return null if none exists.
   const requests = await ctx.db
     .query("resolver_requests")
     .withIndex("by_requesterUserId", (queryBuilder) =>
@@ -64,6 +66,8 @@ async function ensurePendingResolverRequest(
     reason: string | null;
   },
 ): Promise<Id<"resolver_requests"> | null> {
+  // SQL-ish: IF no pending resolver request exists for requesterUserId, INSERT one pending request.
+  // Ensure this user has one pending resolver access request without creating duplicates on retries.
   const latestRequest = await getLatestResolverRequestForUser(ctx, args.requesterUserId);
   if (latestRequest?.status === "pending") {
     return null;
